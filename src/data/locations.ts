@@ -19,12 +19,12 @@ export type PetPlace = {
 };
 
 export const CATEGORY_COLORS: Record<Category, string> = {
-  "Veterinary Clinic": "#A0522D",
-  "Grooming Salon": "#C98B4B",
-  "Pet Store": "#8A6244",
-  "Pet Friendly Cafe": "#D2765A",
-  "Pet Friendly Hotel": "#7B4B2A",
-  "Off Leash Park": "#9C7C38",
+  "Veterinary Clinic": "#8B5E3C",
+  "Grooming Salon": "#957662",
+  "Pet Store": "#6B4632",
+  "Pet Friendly Cafe": "#A66A3F",
+  "Pet Friendly Hotel": "#7A5138",
+  "Off Leash Park": "#B89578",
 };
 
 export const CATEGORIES = Object.keys(CATEGORY_COLORS) as Category[];
