@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Menu,
-  PawPrint,
   X,
   LogOut,
   ShieldCheck,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import favicon from "@/assets/favicon.ico";
 
 const EXPLORE = [
   { to: "/neighbourhood-watch", label: "Neighbourhood Watch", icon: MapPin, hint: "Map of pet friendly places" },
@@ -47,7 +47,11 @@ export function Navbar() {
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
         <Link to="/" className="flex shrink-0 items-center gap-2" onClick={() => setOpen(false)}>
           <span className="grid size-9 place-items-center rounded-full bg-caramel text-caramel-foreground">
-            <PawPrint className="size-5" />
+           <img
+    src={favicon}
+    alt="The Petwork"
+    className="size-7 object-contain"
+  />
           </span>
           <span className="font-display text-xl font-bold tracking-tight">The Petwork</span>
         </Link>
