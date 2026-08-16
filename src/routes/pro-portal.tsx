@@ -16,7 +16,7 @@ export const Route = createFileRoute("/pro-portal")({
       { property: "og:title", content: "The Pro Portal — Verified Pet Pros in Delhi NCR" },
       {
         property: "og:description",
-        content: "Verification-first hiring with escrow payments and GPS-tracked sessions.",
+        content: "Verification-first hiring with GPS-tracked sessions.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -38,8 +38,8 @@ const TABS = [
 
 const STEPS = [
   { icon: Search, title: "Browse verified professionals", text: "Every pro is ID-checked, reference-called and video-interviewed by our team before they appear here." },
-  { icon: ShieldCheck, title: "Book securely with escrow payment", text: "Your money is held safely by The Petwork and released to the pro only after the session is complete." },
-  { icon: Navigation, title: "Track in real time with GPS", text: "Watch the walk route live, get start and end photos, and see exactly how long your dog was out." },
+  { icon: ShieldCheck, title: "Book securely", text: "Discuss payment arrangements directly with your chosen professional." },
+  { icon: Navigation, title: "Track in real time with GPS", text: "Watch the walk route live, get start and end photos, and see exactly how long your pet was out." },
 ];
 
 function ProPortal() {
@@ -50,8 +50,8 @@ function ProPortal() {
     <div className="mx-auto max-w-7xl px-4 py-12">
       <h1 className="text-4xl text-foreground sm:text-5xl">The Pro Portal</h1>
       <p className="mt-3 max-w-2xl text-muted-foreground">
-        Leaving your dog with a stranger is a leap of faith. We do the background work first, so you
-        only meet people we would trust with our own pets — which is why nobody is listed here until
+        Leaving your pet with a stranger is a leap of faith. We do the background work first, so you
+        only meet people we would trust with our own pets, which is why nobody is listed here until
         they have cleared verification.
       </p>
 
@@ -111,8 +111,7 @@ function ProPortal() {
             Are you a pet professional? Join The Petwork Pro Network
           </h2>
           <p className="mt-2 text-sm text-mocha-foreground/80">
-            Steady bookings across Delhi NCR, payments held in escrow and released on completion,
-            and a profile that shows owners you have been checked properly.
+            Steady bookings across Delhi NCR, clear service details, and a profile that helps owners get to know you and your work.
           </p>
         </div>
         <Button
