@@ -105,19 +105,19 @@
 
 :root {
   --radius: 0.9rem;
-  --background: oklch(0.982 0.005 85);
-  --foreground: oklch(0.3 0.018 55);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.3 0.018 55);
+  --background: #EBCDB7;
+  --foreground: #3A2119;
+  --card: #D2E2EC;
+  --card-foreground: #3A2119;
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.3 0.018 55);
-  --primary: oklch(0.62 0.117 52);
+  --primary: #79A3C3;
   --primary-foreground: oklch(0.99 0.004 85);
-  --secondary: oklch(0.93 0.011 78);
+  --secondary: #D2E2EC;
   --secondary-foreground: oklch(0.34 0.02 55);
   --muted: oklch(0.945 0.008 82);
   --muted-foreground: oklch(0.52 0.016 60);
-  --accent: oklch(0.93 0.011 78);
+  --accent: #79A3C3;
   --accent-foreground: oklch(0.34 0.02 55);
   --destructive: oklch(0.53 0.17 28);
   --destructive-foreground: oklch(0.99 0.004 85);
