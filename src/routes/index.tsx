@@ -7,16 +7,16 @@ import { PET_PLACES } from "@/data/locations";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "The Petwork — A home for every pet and every owner" },
+      { title: "The Petwork — Made for life with your pet" },
       {
         name: "description",
         content:
-          "Search pet friendly stays, cafes, groomers, vets, parks and stores across Delhi NCR — plus community, recipes, guides and pet records, all in one warm place.",
+  "A trusted space for pet parents across Delhi NCR to find places, people, resources and care for their pets.",
       },
-      { property: "og:title", content: "The Petwork — A home for every pet and every owner" },
+      { property: "og:title", content: "The Petwork — Made for life with your pet" },
       {
         property: "og:description",
-        content: "A warm directory of everything a Delhi NCR pet owner needs.",
+content: "A trusted space for pet parents across Delhi NCR to find places, people, resources and care for their pets.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -27,9 +27,9 @@ export const Route = createFileRoute("/")({
 
 const FEATURE_TEXT: Record<string, string> = {
   "/neighbourhood-watch":
-    "Vets, groomers, stores, pet friendly cafes, hotels and off-leash parks across Delhi NCR — with the real pet rules for each place.",
+    "Vets, groomers, stores, pet friendly cafes, hotels and off-leash parks across Delhi NCR, plus all the conditions listed for your reference.",
   "/pro-portal":
-    "Book verified walkers, groomers, sitters, trainers and vets with escrow payments and live GPS tracking.",
+    "Book verified walkers, groomers, sitters, trainers and vets.",
   "/pack-social":
     "Neighbourhood groups for your breed and your stage of pet parenting, plus verified shelters you can trust.",
   "/daily-bark":
@@ -58,11 +58,11 @@ function Home() {
       <section className="border-b border-border bg-oat/50">
         <div className="mx-auto max-w-3xl px-4 py-14 text-center sm:py-20">
           <h1 className="text-4xl leading-tight text-foreground sm:text-5xl">
-            A home for every pet and every owner.
-          </h1>
-          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Everything a Delhi NCR pet owner needs — maps, community, hiring, guides and care.
-          </p>
+  Made for life with your pet.
+</h1>
+<p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
+  Finding the right place, person, or advice for your pet shouldn't be a struggle. The Petwork brings together trusted local services, useful guides, pet friendly places, and a community of pet parents across Delhi NCR.
+</p>
           <div className="mt-8">
             <DirectorySearch />
           </div>
