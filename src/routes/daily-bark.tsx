@@ -41,12 +41,17 @@ const SPECIES = [
 
 function DailyBark() {
   const [species, setSpecies] = useState<(typeof SPECIES)[number]>("All");
-  const [saved, setSaved] = useState<string[]>([]);
+const [saved, setSaved] = useState<string[]>([]);
+const [failedVideos, setFailedVideos] = useState<string[]>([]);
 
-  const videos = useMemo(
-    () => (species === "All" ? VIDEOS : VIDEOS.filter((v) => v.species === species)),
-    [species],
-  );
+ const videos = useMemo(
+  () =>
+    (species === "All"
+      ? VIDEOS
+      : VIDEOS.filter((v) => v.species === species)
+    ).filter((v) => !failedVideos.includes(v.id)),
+  [species, failedVideos],
+);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12">
@@ -78,14 +83,27 @@ function DailyBark() {
           return (
             <article key={v.id} className="card-cozy hover-lift flex flex-col overflow-hidden">
               <div className="aspect-video w-full bg-accent">
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${v.id}`}
-                  title={v.title}
-                  loading="lazy"
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="size-full border-0"
-                />
+                {failedVideos.includes(v.id) ? (
+  <div className="flex h-full items-center justify-center bg-accent p-6 text-center">
+    <p className="text-sm font-semibold text-muted-foreground">
+      This video is currently unavailable.
+    </p>
+  </div>
+) : (
+  <iframe
+    src={`https://www.youtube-nocookie.com/embed/${v.id}`}
+    title={v.title}
+    loading="lazy"
+    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowFullScreen
+    className="size-full border-0"
+    onError={() => {
+      setFailedVideos((prev) =>
+        prev.includes(v.id) ? prev : [...prev, v.id],
+      );
+    }}
+  />
+)}
               </div>
               <div className="flex flex-1 flex-col p-6">
                 <div className="flex flex-wrap items-center gap-2">
