@@ -1,7 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   LayoutDashboard,
@@ -28,10 +26,6 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
-import {
-  getFounderSession,
-  logoutFounder,
-} from "@/lib/founder.functions";
 import { SURVEY } from "@/data/content";
 import {
   CATEGORIES,
@@ -61,8 +55,7 @@ export const Route = createFileRoute("/founder")({
       },
       {
         property: "og:description",
-        content:
-          "Internal operations dashboard for The Petwork.",
+        content: "Internal operations dashboard for The Petwork.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -113,36 +106,40 @@ const PIE_COLORS = [
 function FounderDashboard() {
   const navigate = useNavigate();
 
-  const fetchSession = useServerFn(getFounderSession);
-  const signOut = useServerFn(logoutFounder);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   const [section, setSection] =
     useState<(typeof SECTIONS)[number]["key"]>("overview");
 
-  const {
-    data: founder,
-    isPending,
-  } = useQuery({
-    queryKey: ["founder-session"],
-    queryFn: () => fetchSession(),
-    staleTime: 0,
-  });
-
   useEffect(() => {
-    if (!isPending && !founder) {
+    const access = sessionStorage.getItem(
+      "petwork_founder_access"
+    );
+
+    if (access === "true") {
+      setAuthorized(true);
+    } else {
+      setAuthorized(false);
+
       navigate({
         to: "/founder-access",
         replace: true,
       });
     }
-  }, [isPending, founder, navigate]);
+  }, [navigate]);
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate({ to: "/" });
+  const handleSignOut = () => {
+    sessionStorage.removeItem("petwork_founder_access");
+
+    toast.success("Signed out.");
+
+    navigate({
+      to: "/founder-access",
+      replace: true,
+    });
   };
 
-  if (isPending || !founder) {
+  if (authorized === null) {
     return (
       <div className="grid min-h-screen place-items-center bg-mocha text-mocha-foreground">
         <p className="text-sm">
@@ -150,6 +147,10 @@ function FounderDashboard() {
         </p>
       </div>
     );
+  }
+
+  if (!authorized) {
+    return null;
   }
 
   return (
@@ -166,7 +167,7 @@ function FounderDashboard() {
             </p>
 
             <p className="text-xs text-sidebar-foreground/70">
-              {founder.name} · founder console
+              founder console
             </p>
           </div>
         </div>
@@ -477,9 +478,6 @@ function MapManagement() {
       />
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
-
-        {/* ADD NEW LOCATION */}
-
         <form
           className="card-cozy h-fit space-y-4 p-6"
           onSubmit={(e) => {
@@ -566,8 +564,6 @@ function MapManagement() {
             />
           </div>
 
-          {/* NEW LOCATION IMAGE */}
-
           <div>
             <Label htmlFor="loc-image">
               Location image URL
@@ -581,8 +577,7 @@ function MapManagement() {
             />
 
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Paste the direct URL of the actual
-              location photo.
+              Paste the direct URL of the actual location photo.
             </p>
           </div>
 
@@ -608,8 +603,6 @@ function MapManagement() {
           </Button>
         </form>
 
-        {/* LOCATION LIST */}
-
         <div className="space-y-4">
           {listings.map((l) => (
             <div
@@ -617,9 +610,6 @@ function MapManagement() {
               className="card-cozy overflow-hidden"
             >
               <div className="flex flex-col gap-4 p-4 sm:flex-row">
-
-                {/* LOCATION IMAGE */}
-
                 <div className="relative shrink-0">
                   <img
                     src={l.image}
@@ -649,8 +639,6 @@ function MapManagement() {
                     Change Image
                   </button>
                 </div>
-
-                {/* DETAILS */}
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col justify-between gap-2 sm:flex-row">
@@ -701,18 +689,13 @@ function MapManagement() {
 
                   <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
                     <span>
-                      {l.conditions.length} pet
-                      conditions
+                      {l.conditions.length} pet conditions
                     </span>
 
-                    <span>
-                      {l.hours}
-                    </span>
+                    <span>{l.hours}</span>
                   </div>
                 </div>
               </div>
-
-              {/* CHANGE IMAGE EDITOR */}
 
               {editingImage === l.id && (
                 <div className="border-t border-border bg-oat/60 p-4">
@@ -756,12 +739,9 @@ function MapManagement() {
                     />
 
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                      Paste the direct image URL for
-                      this exact location.
+                      Paste the direct image URL for this exact location.
                     </p>
                   </div>
-
-                  {/* PREVIEW */}
 
                   {imageUrl && !previewError && (
                     <div className="mt-4">
@@ -782,9 +762,7 @@ function MapManagement() {
 
                   {previewError && (
                     <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-                      That image URL could not be
-                      loaded. Make sure you pasted a
-                      direct image URL.
+                      That image URL could not be loaded. Make sure you pasted a direct image URL.
                     </p>
                   )}
 
@@ -826,8 +804,7 @@ function MapManagement() {
               </h2>
 
               <p className="mt-2 text-sm text-muted-foreground">
-                Add your first location using the
-                form.
+                Add your first location using the form.
               </p>
             </div>
           )}
@@ -836,10 +813,6 @@ function MapManagement() {
     </>
   );
 }
-
-/* =========================================================
-   PIE CHART
-   ========================================================= */
 
 function PieCard({
   title,
@@ -899,10 +872,6 @@ function PieCard({
     </div>
   );
 }
-
-/* =========================================================
-   ANALYTICS
-   ========================================================= */
 
 function Analytics() {
   return (
