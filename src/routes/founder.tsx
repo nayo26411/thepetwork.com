@@ -15,6 +15,8 @@ import {
   Image as ImageIcon,
   X,
   Upload,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import {
   Bar,
@@ -159,8 +161,7 @@ function FounderDashboard() {
     try {
       await signOut();
     } catch {
-      // Local founder access is still cleared even if the server session
-      // does not exist.
+      // Local founder access is still cleared.
     }
 
     navigate({ to: "/founder-access", replace: true });
@@ -251,7 +252,7 @@ function FounderDashboard() {
           <>
             <SectionHead
               title="Professional Applications"
-              sub="Applications from pros wanting to join the network appear here for review."
+              sub="Applications from professionals wanting to join the network appear here for review."
             />
 
             <EmptyPanel
@@ -401,10 +402,7 @@ function Overview() {
         </h2>
 
         <div className="mt-4 h-64">
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-          >
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart data={SURVEY.featureDemand}>
               <XAxis
                 dataKey="name"
@@ -448,11 +446,7 @@ function MapManagement() {
     PET_PLACES.map((p) => ({
       ...p,
       published: true,
-      image: placePhoto(
-        p.id,
-        p.category,
-        800
-      ),
+      image: placePhoto(p.id, p.category, 800),
     }))
   );
 
@@ -474,9 +468,38 @@ function MapManagement() {
   const [newLocationImageName, setNewLocationImageName] =
     useState("");
 
-  const startEditingImage = (
-    id: string
-  ) => {
+  const [editingLocationId, setEditingLocationId] =
+    useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    name: "",
+    address: "",
+    category: CATEGORIES[0],
+    hours: "",
+    conditions: "",
+    published: true,
+  });
+
+  const resetForm = () => {
+    setForm({
+      name: "",
+      address: "",
+      category: CATEGORIES[0],
+      hours: "",
+      conditions: "",
+      published: true,
+    });
+
+    setNewLocationImage(null);
+    setNewLocationImageName("");
+    setEditingLocationId(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const startEditingImage = (id: string) => {
     setEditingImage(id);
     setPreviewImage(null);
   };
@@ -495,14 +518,17 @@ function MapManagement() {
     fileInputRef.current?.click();
   };
 
+  const openNewLocationPicker = () => {
+    setSelectedUploadId(null);
+    fileInputRef.current?.click();
+  };
+
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
 
-    if (!file || !selectedUploadId) {
-      return;
-    }
+    if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
@@ -514,23 +540,28 @@ function MapManagement() {
       return;
     }
 
-    const imageUrl =
-      URL.createObjectURL(file);
+    const imageUrl = URL.createObjectURL(file);
 
-    setPreviewImage(imageUrl);
+    if (selectedUploadId) {
+      setPreviewImage(imageUrl);
 
-    setListings((prev) =>
-      prev.map((listing) =>
-        listing.id === selectedUploadId
-          ? {
-              ...listing,
-              image: imageUrl,
-            }
-          : listing
-      )
-    );
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing.id === selectedUploadId
+            ? {
+                ...listing,
+                image: imageUrl,
+              }
+            : listing
+        )
+      );
 
-    toast.success("Image selected");
+      toast.success("Image selected");
+    } else {
+      setNewLocationImage(imageUrl);
+      setNewLocationImageName(file.name);
+      toast.success("Location image selected");
+    }
   };
 
   const saveUploadedImage = () => {
@@ -565,9 +596,7 @@ function MapManagement() {
       (p) => p.id === id
     );
 
-    if (!listing) {
-      return;
-    }
+    if (!listing) return;
 
     const fallback = placePhoto(
       listing.id,
@@ -589,6 +618,101 @@ function MapManagement() {
     toast.success("Original image restored");
   };
 
+  const handleSaveLocation = (
+    e: React.FormEvent
+  ) => {
+    e.preventDefault();
+
+    if (!form.name.trim() || !form.address.trim()) {
+      toast.error("Please enter the place name and address");
+      return;
+    }
+
+    if (editingLocationId) {
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing.id === editingLocationId
+            ? {
+                ...listing,
+                name: form.name.trim(),
+                address: form.address.trim(),
+                category: form.category as Category,
+                hours: form.hours.trim() || "Hours not specified",
+                conditions: form.conditions
+                  .split("\n")
+                  .map((x) => x.trim())
+                  .filter(Boolean),
+                published: form.published,
+                image:
+                  newLocationImage || listing.image,
+              }
+            : listing
+        )
+      );
+
+      toast.success("Location updated");
+    } else {
+      const newId = `custom-${Date.now()}`;
+
+      const newListing = {
+        id: newId,
+        name: form.name.trim(),
+        address: form.address.trim(),
+        category: form.category as Category,
+        hours: form.hours.trim() || "Hours not specified",
+        conditions: form.conditions
+          .split("\n")
+          .map((x) => x.trim())
+          .filter(Boolean),
+        published: form.published,
+        image:
+          newLocationImage ||
+          placePhoto(newId, form.category as Category, 800),
+      } as Listing;
+
+      setListings((prev) => [
+        newListing,
+        ...prev,
+      ]);
+
+      toast.success("Location added");
+    }
+
+    resetForm();
+  };
+
+  const startEditingLocation = (listing: Listing) => {
+    setEditingLocationId(listing.id);
+
+    setForm({
+      name: listing.name,
+      address: listing.address,
+      category: listing.category,
+      hours: listing.hours,
+      conditions: listing.conditions.join("\n"),
+      published: listing.published,
+    });
+
+    setNewLocationImage(listing.image);
+    setNewLocationImageName("");
+  };
+
+  const deleteLocation = (id: string) => {
+    if (!window.confirm("Delete this location?")) {
+      return;
+    }
+
+    setListings((prev) =>
+      prev.filter((listing) => listing.id !== id)
+    );
+
+    if (editingLocationId === id) {
+      resetForm();
+    }
+
+    toast.success("Location deleted");
+  };
+
   return (
     <>
       <SectionHead
@@ -596,7 +720,6 @@ function MapManagement() {
         sub="Add, edit, publish and manage every location on The Neighbourhood Watch."
       />
 
-      {/* Hidden file picker */}
       <input
         ref={fileInputRef}
         type="file"
@@ -607,22 +730,36 @@ function MapManagement() {
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
 
-        {/* ADD NEW LOCATION */}
+        {/* ADD / EDIT LOCATION */}
 
         <form
           className="card-cozy h-fit space-y-4 p-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-
-            toast.success(
-              "New location queued for publishing"
-            );
-          }}
+          onSubmit={handleSaveLocation}
         >
-          <h2 className="flex items-center gap-2 text-lg text-foreground">
-            <Plus className="size-5 text-caramel" />
-            Add New Location
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-lg text-foreground">
+              {editingLocationId ? (
+                <Pencil className="size-5 text-caramel" />
+              ) : (
+                <Plus className="size-5 text-caramel" />
+              )}
+
+              {editingLocationId
+                ? "Edit Location"
+                : "Add New Location"}
+            </h2>
+
+            {editingLocationId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={resetForm}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
 
           <div>
             <Label htmlFor="loc-name">
@@ -633,6 +770,13 @@ function MapManagement() {
               id="loc-name"
               maxLength={90}
               className="mt-1.5 rounded-xl"
+              value={form.name}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  name: e.target.value,
+                })
+              }
               required
             />
           </div>
@@ -646,6 +790,13 @@ function MapManagement() {
               id="loc-address"
               maxLength={160}
               className="mt-1.5 rounded-xl"
+              value={form.address}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  address: e.target.value,
+                })
+              }
               required
             />
           </div>
@@ -657,10 +808,17 @@ function MapManagement() {
 
             <select
               id="loc-cat"
+              value={form.category}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  category: e.target.value as Category,
+                })
+              }
               className="mt-1.5 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm"
             >
               {CATEGORIES.map((c) => (
-                <option key={c}>
+                <option key={c} value={c}>
                   {c}
                 </option>
               ))}
@@ -677,6 +835,13 @@ function MapManagement() {
               maxLength={80}
               placeholder="Mon–Sun, 10:00 AM – 8:00 PM"
               className="mt-1.5 rounded-xl"
+              value={form.hours}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  hours: e.target.value,
+                })
+              }
             />
           </div>
 
@@ -693,10 +858,17 @@ function MapManagement() {
                 "Dogs allowed on leash\nOutdoor seating only"
               }
               className="mt-1.5 rounded-xl"
+              value={form.conditions}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  conditions: e.target.value,
+                })
+              }
             />
           </div>
 
-          {/* IMAGE UPLOAD — NO URL */}
+          {/* IMAGE UPLOAD */}
 
           <div>
             <Label>
@@ -705,10 +877,7 @@ function MapManagement() {
 
             <button
               type="button"
-              onClick={() => {
-                setSelectedUploadId(null);
-                fileInputRef.current?.click();
-              }}
+              onClick={openNewLocationPicker}
               className="mt-1.5 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-oat/50 px-5 py-8 text-center transition hover:border-caramel hover:bg-accent"
             >
               <Upload className="size-7 text-caramel" />
@@ -726,7 +895,7 @@ function MapManagement() {
               <div className="relative mt-3">
                 <img
                   src={newLocationImage}
-                  alt="New location preview"
+                  alt="Location preview"
                   className="h-40 w-full rounded-2xl object-cover"
                 />
 
@@ -760,7 +929,13 @@ function MapManagement() {
 
             <Switch
               id="loc-pub"
-              defaultChecked
+              checked={form.published}
+              onCheckedChange={(v) =>
+                setForm({
+                  ...form,
+                  published: v,
+                })
+              }
             />
           </div>
 
@@ -768,7 +943,9 @@ function MapManagement() {
             type="submit"
             className="w-full rounded-full bg-caramel text-caramel-foreground hover:bg-caramel/90"
           >
-            Save location
+            {editingLocationId
+              ? "Save Changes"
+              : "Save Location"}
           </Button>
         </form>
 
@@ -782,7 +959,7 @@ function MapManagement() {
             >
               <div className="flex flex-col gap-4 p-4 sm:flex-row">
 
-                {/* LOCATION IMAGE */}
+                {/* IMAGE */}
 
                 <div className="relative shrink-0">
                   <img
@@ -868,6 +1045,36 @@ function MapManagement() {
                     <span>
                       {l.hours}
                     </span>
+                  </div>
+
+                  {/* LOCATION ACTIONS */}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        startEditingLocation(l)
+                      }
+                      className="rounded-full"
+                    >
+                      <Pencil className="size-3.5" />
+                      Edit Location
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        deleteLocation(l.id)
+                      }
+                      className="rounded-full text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" />
+                      Delete
+                    </Button>
                   </div>
                 </div>
               </div>
