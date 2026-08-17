@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,8 @@ export const Route = createFileRoute("/founder-access")({
   component: FounderAccess,
 });
 
+const FOUNDER_PASSWORD = "thepetwork2011";
+
 function FounderAccess() {
   const navigate = useNavigate();
 
@@ -27,32 +29,27 @@ function FounderAccess() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const FOUNDER_PASSWORD = "thepetwork2011";
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!password) {
-      toast.error("Please enter the founder password.");
-      return;
-    }
 
     setBusy(true);
 
     if (password === FOUNDER_PASSWORD) {
-      // Store founder access for this browser session
+      // Store founder access so /founder does not immediately redirect back.
       sessionStorage.setItem("petwork_founder_access", "true");
 
-      toast.success("Founder access granted.");
+      toast.success("Founder access granted");
 
-      // Give the sessionStorage write a moment before navigating
-      setTimeout(() => {
-        window.location.href = "/founder";
-      }, 200);
-    } else {
-      toast.error("Incorrect founder password.");
-      setBusy(false);
+      navigate({
+        to: "/founder",
+        replace: true,
+      });
+
+      return;
     }
+
+    toast.error("Incorrect founder password");
+    setBusy(false);
   };
 
   return (
@@ -66,13 +63,18 @@ function FounderAccess() {
           Founder Access
         </h1>
 
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           Access restricted to The Petwork founding team only.
         </p>
 
-        <form onSubmit={handleLogin} className="mt-6 space-y-5">
+        <form
+          className="mt-6 space-y-5"
+          onSubmit={handleLogin}
+        >
           <div>
-            <Label htmlFor="fpassword">Founder Password</Label>
+            <Label htmlFor="fpassword">
+              Founder password
+            </Label>
 
             <div className="relative mt-1.5">
               <Input
@@ -82,20 +84,22 @@ function FounderAccess() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 maxLength={128}
-                placeholder="Enter founder password"
                 className="rounded-xl pr-12"
+                placeholder="Enter founder password"
                 required
               />
 
               <button
                 type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
+                onClick={() =>
+                  setShowPassword((prev) => !prev)
+                }
                 aria-label={
                   showPassword
                     ? "Hide password"
                     : "Show password"
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 {showPassword ? (
                   <EyeOff className="size-5" />
@@ -108,7 +112,7 @@ function FounderAccess() {
 
           <Button
             type="submit"
-            disabled={busy}
+            disabled={busy || !password}
             className="w-full rounded-full bg-mocha text-mocha-foreground hover:bg-mocha/90"
           >
             {busy ? "Opening Founder Portal…" : "Enter Founder Portal"}
