@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   LayoutDashboard,
@@ -12,8 +12,8 @@ import {
   ClipboardList,
   Image as ImageIcon,
   X,
-  Eye,
-  EyeOff,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import {
   Bar,
@@ -106,39 +106,96 @@ const PIE_COLORS = [
   "#D9A566",
 ];
 
+const IMAGE_STORAGE_KEY = "petwork_location_images";
+
+type StoredImages = Record<string, string>;
+
+function getStoredImages(): StoredImages {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const stored = localStorage.getItem(IMAGE_STORAGE_KEY);
+    if (!stored) return {};
+
+    return JSON.parse(stored) as StoredImages;
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredImages(images: StoredImages) {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(
+      IMAGE_STORAGE_KEY,
+      JSON.stringify(images)
+    );
+  } catch {
+    toast.error(
+      "The image could not be saved. Try a smaller image."
+    );
+  }
+}
+
+function getLocationImage(
+  id: string,
+  category: Category,
+  width = 800
+) {
+  if (typeof window !== "undefined") {
+    const images = getStoredImages();
+
+    if (images[id]) {
+      return images[id];
+    }
+  }
+
+  return placePhoto(id, category, width);
+}
+
 function FounderDashboard() {
   const navigate = useNavigate();
 
   const [section, setSection] =
     useState<(typeof SECTIONS)[number]["key"]>("overview");
 
-  const [checkingAccess, setCheckingAccess] = useState(true);
-
-  const [founder] = useState({
+  const [founder, setFounder] = useState({
     name: "Founder",
   });
 
   useEffect(() => {
-    const access = sessionStorage.getItem(
-      "petwork_founder_access"
-    );
+    try {
+      const access =
+        sessionStorage.getItem("petwork_founder_access") === "true" ||
+        localStorage.getItem("petwork_founder_access") === "true";
 
-    if (access !== "true") {
+      if (!access) {
+        navigate({
+          to: "/founder-access",
+          replace: true,
+        });
+        return;
+      }
+
+      setFounder({
+        name: "Founder",
+      });
+    } catch {
       navigate({
         to: "/founder-access",
         replace: true,
       });
-
-      return;
     }
-
-    setCheckingAccess(false);
   }, [navigate]);
 
   const handleSignOut = () => {
-    sessionStorage.removeItem("petwork_founder_access");
-
-    toast.success("Signed out of Founder Portal");
+    try {
+      sessionStorage.removeItem("petwork_founder_access");
+      localStorage.removeItem("petwork_founder_access");
+    } catch {
+      // Ignore storage errors.
+    }
 
     navigate({
       to: "/founder-access",
@@ -146,7 +203,12 @@ function FounderDashboard() {
     });
   };
 
-  if (checkingAccess) {
+  const hasAccess =
+    typeof window !== "undefined" &&
+    (sessionStorage.getItem("petwork_founder_access") === "true" ||
+      localStorage.getItem("petwork_founder_access") === "true");
+
+  if (!hasAccess) {
     return (
       <div className="grid min-h-screen place-items-center bg-mocha text-mocha-foreground">
         <p className="text-sm">
@@ -218,7 +280,7 @@ function FounderDashboard() {
           <>
             <SectionHead
               title="Professional Applications"
-              sub="Applications from professionals wanting to join the network appear here for review."
+              sub="Applications from pros wanting to join the network appear here for review."
             />
 
             <EmptyPanel
@@ -406,61 +468,130 @@ function Overview() {
   );
 }
 
+/* =========================================================
+   MAP MANAGEMENT
+   ========================================================= */
+
 function MapManagement() {
-  const [listings, setListings] = useState(
+  const [listings, setListings] = useState(() =>
     PET_PLACES.map((p) => ({
       ...p,
       published: true,
-      image: getSavedImage(p.id, p.category),
+      image: getLocationImage(
+        p.id,
+        p.category,
+        800
+      ),
     }))
   );
 
   const [editingImage, setEditingImage] =
     useState<string | null>(null);
 
-  const [imageUrl, setImageUrl] =
-    useState("");
+  const [previewImage, setPreviewImage] =
+    useState<string | null>(null);
 
-  const [previewError, setPreviewError] =
-    useState(false);
+  const [addImage, setAddImage] =
+    useState<string | null>(null);
 
-  const [newLocationImage, setNewLocationImage] =
-    useState("");
+  const fileInputRef =
+    useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (id: string) => {
-    const trimmedUrl = imageUrl.trim();
+  const addFileInputRef =
+    useRef<HTMLInputElement>(null);
 
-    if (!trimmedUrl) {
-      toast.error("Please enter an image URL");
+  const [uploadingFor, setUploadingFor] =
+    useState<string | null>(null);
+
+  const handleFileSelected = (
+    file: File | undefined,
+    locationId: string
+  ) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
       return;
     }
 
-    if (previewError) {
-      toast.error("Please enter a working image URL");
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Please choose an image smaller than 8MB");
       return;
     }
 
-    localStorage.setItem(
-      `petwork_location_image_${id}`,
-      trimmedUrl
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+
+      if (typeof result !== "string") {
+        toast.error("Could not read that image");
+        return;
+      }
+
+      const storedImages = getStoredImages();
+
+      storedImages[locationId] = result;
+
+      saveStoredImages(storedImages);
+
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing.id === locationId
+            ? {
+                ...listing,
+                image: result,
+              }
+            : listing
+        )
+      );
+
+      setPreviewImage(result);
+      setUploadingFor(null);
+
+      toast.success("Location image updated");
+    };
+
+    reader.onerror = () => {
+      toast.error("Could not read that image");
+      setUploadingFor(null);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const removeLocationImage = (id: string) => {
+    const storedImages = getStoredImages();
+
+    delete storedImages[id];
+
+    saveStoredImages(storedImages);
+
+    const original = PET_PLACES.find(
+      (p) => p.id === id
     );
+
+    if (!original) return;
 
     setListings((prev) =>
       prev.map((listing) =>
         listing.id === id
           ? {
               ...listing,
-              image: trimmedUrl,
+              image: placePhoto(
+                original.id,
+                original.category,
+                800
+              ),
             }
           : listing
       )
     );
 
     setEditingImage(null);
-    setImageUrl("");
-    setPreviewError(false);
+    setPreviewImage(null);
 
-    toast.success("Location image updated");
+    toast.success("Custom image removed");
   };
 
   const startEditingImage = (
@@ -468,87 +599,49 @@ function MapManagement() {
     currentImage: string
   ) => {
     setEditingImage(id);
-    setImageUrl(currentImage);
-    setPreviewError(false);
+    setPreviewImage(currentImage);
   };
 
   const cancelEditing = () => {
     setEditingImage(null);
-    setImageUrl("");
-    setPreviewError(false);
+    setPreviewImage(null);
+    setUploadingFor(null);
   };
 
-  const addLocation = (
-    e: React.FormEvent<HTMLFormElement>
+  const handleNewLocationImage = (
+    file: File | undefined
   ) => {
-    e.preventDefault();
+    if (!file) return;
 
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-
-    const name =
-      String(formData.get("name") || "").trim();
-
-    const address =
-      String(formData.get("address") || "").trim();
-
-    const category =
-      String(formData.get("category") || "") as Category;
-
-    const hours =
-      String(formData.get("hours") || "").trim();
-
-    const conditionsText =
-      String(formData.get("conditions") || "").trim();
-
-    const image =
-      String(formData.get("image") || "").trim();
-
-    if (!name || !address) {
-      toast.error("Place name and address are required");
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
       return;
     }
 
-    const id =
-      `${name}-${address}`
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-
-    const newLocation = {
-      id,
-      name,
-      address,
-      category,
-      hours: hours || "Hours not provided",
-      conditions: conditionsText
-        ? conditionsText
-            .split("\n")
-            .map((x) => x.trim())
-            .filter(Boolean)
-        : [],
-      published: true,
-      image:
-        image ||
-        placePhoto(id, category, 800),
-    };
-
-    if (image) {
-      localStorage.setItem(
-        `petwork_location_image_${id}`,
-        image
-      );
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Please choose an image smaller than 8MB");
+      return;
     }
 
-    setListings((prev) => [
-      ...prev,
-      newLocation,
-    ]);
+    const reader = new FileReader();
 
-    form.reset();
-    setNewLocationImage("");
+    reader.onload = () => {
+      const result = reader.result;
 
-    toast.success("Location added");
+      if (typeof result !== "string") {
+        toast.error("Could not read that image");
+        return;
+      }
+
+      setAddImage(result);
+      toast.success("Image ready to upload");
+    };
+
+    reader.onerror = () => {
+      toast.error("Could not read that image");
+    };
+
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -559,9 +652,18 @@ function MapManagement() {
       />
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+
+        {/* ADD NEW LOCATION */}
+
         <form
           className="card-cozy h-fit space-y-4 p-6"
-          onSubmit={addLocation}
+          onSubmit={(e) => {
+            e.preventDefault();
+
+            toast.success(
+              "New location queued for publishing"
+            );
+          }}
         >
           <h2 className="flex items-center gap-2 text-lg text-foreground">
             <Plus className="size-5 text-caramel" />
@@ -575,7 +677,6 @@ function MapManagement() {
 
             <Input
               id="loc-name"
-              name="name"
               maxLength={90}
               className="mt-1.5 rounded-xl"
               required
@@ -589,7 +690,6 @@ function MapManagement() {
 
             <Input
               id="loc-address"
-              name="address"
               maxLength={160}
               className="mt-1.5 rounded-xl"
               required
@@ -603,12 +703,10 @@ function MapManagement() {
 
             <select
               id="loc-cat"
-              name="category"
-              defaultValue={CATEGORIES[0]}
               className="mt-1.5 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm"
             >
               {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
+                <option key={c}>
                   {c}
                 </option>
               ))}
@@ -622,7 +720,6 @@ function MapManagement() {
 
             <Input
               id="loc-hours"
-              name="hours"
               maxLength={80}
               placeholder="Mon–Sun, 10:00 AM – 8:00 PM"
               className="mt-1.5 rounded-xl"
@@ -636,7 +733,6 @@ function MapManagement() {
 
             <Textarea
               id="loc-cond"
-              name="conditions"
               rows={4}
               maxLength={600}
               placeholder={
@@ -646,38 +742,60 @@ function MapManagement() {
             />
           </div>
 
+          {/* UPLOAD NEW LOCATION IMAGE */}
+
           <div>
-            <Label htmlFor="loc-image">
-              Location image URL
+            <Label>
+              Location image
             </Label>
 
-            <Input
-              id="loc-image"
-              name="image"
-              type="url"
-              value={newLocationImage}
-              onChange={(e) =>
-                setNewLocationImage(e.target.value)
-              }
-              placeholder="https://..."
-              className="mt-1.5 rounded-xl"
+            <input
+              ref={addFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                handleNewLocationImage(
+                  e.target.files?.[0]
+                );
+
+                e.currentTarget.value = "";
+              }}
             />
 
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Paste the direct image URL for this exact location.
-            </p>
+            {!addImage ? (
+              <button
+                type="button"
+                onClick={() =>
+                  addFileInputRef.current?.click()
+                }
+                className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-oat/40 px-4 py-6 text-sm font-bold text-muted-foreground transition hover:border-caramel hover:bg-accent hover:text-caramel"
+              >
+                <Upload className="size-5" />
+                Upload Location Image
+              </button>
+            ) : (
+              <div className="relative mt-1.5 overflow-hidden rounded-2xl">
+                <img
+                  src={addImage}
+                  alt="New location preview"
+                  className="h-44 w-full object-cover"
+                />
 
-            {newLocationImage && (
-              <img
-                src={newLocationImage}
-                alt="New location preview"
-                className="mt-3 h-40 w-full rounded-2xl object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display =
-                    "none";
-                }}
-              />
+                <button
+                  type="button"
+                  onClick={() => setAddImage(null)}
+                  className="absolute right-2 top-2 rounded-full bg-black/75 p-2 text-white hover:bg-black"
+                  aria-label="Remove selected image"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             )}
+
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Choose the actual photo from your computer.
+            </p>
           </div>
 
           <div className="flex items-center justify-between rounded-xl bg-oat p-3">
@@ -690,7 +808,6 @@ function MapManagement() {
 
             <Switch
               id="loc-pub"
-              name="published"
               defaultChecked
             />
           </div>
@@ -699,9 +816,11 @@ function MapManagement() {
             type="submit"
             className="w-full rounded-full bg-caramel text-caramel-foreground hover:bg-caramel/90"
           >
-            Save Location
+            Save location
           </Button>
         </form>
+
+        {/* LOCATION LIST */}
 
         <div className="space-y-4">
           {listings.map((l) => (
@@ -710,6 +829,9 @@ function MapManagement() {
               className="card-cozy overflow-hidden"
             >
               <div className="flex flex-col gap-4 p-4 sm:flex-row">
+
+                {/* LOCATION IMAGE */}
+
                 <div className="relative shrink-0">
                   <img
                     src={l.image}
@@ -725,20 +847,47 @@ function MapManagement() {
                     }}
                   />
 
+                  <input
+                    ref={
+                      editingImage === l.id
+                        ? fileInputRef
+                        : undefined
+                    }
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      setUploadingFor(l.id);
+
+                      handleFileSelected(
+                        e.target.files?.[0],
+                        l.id
+                      );
+
+                      e.currentTarget.value = "";
+                    }}
+                  />
+
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
                       startEditingImage(
                         l.id,
                         l.image
-                      )
-                    }
+                      );
+
+                      setTimeout(() => {
+                        fileInputRef.current?.click();
+                      }, 50);
+                    }}
                     className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-xs font-bold text-white backdrop-blur transition hover:bg-black/90"
                   >
                     <ImageIcon className="size-3.5" />
                     Change Image
                   </button>
                 </div>
+
+                {/* DETAILS */}
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col justify-between gap-2 sm:flex-row">
@@ -789,7 +938,8 @@ function MapManagement() {
 
                   <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
                     <span>
-                      {l.conditions.length} pet conditions
+                      {l.conditions.length} pet
+                      conditions
                     </span>
 
                     <span>
@@ -799,6 +949,8 @@ function MapManagement() {
                 </div>
               </div>
 
+              {/* IMAGE MANAGEMENT */}
+
               {editingImage === l.id && (
                 <div className="border-t border-border bg-oat/60 p-4">
                   <div className="flex items-center justify-between">
@@ -806,7 +958,7 @@ function MapManagement() {
                       <ImageIcon className="size-4 text-caramel" />
 
                       <p className="text-sm font-bold text-foreground">
-                        Change location image
+                        Location image
                       </p>
                     </div>
 
@@ -819,69 +971,63 @@ function MapManagement() {
                     </button>
                   </div>
 
-                  <div className="mt-4">
-                    <Label
-                      htmlFor={`image-${l.id}`}
-                    >
-                      Image URL
-                    </Label>
-
-                    <Input
-                      id={`image-${l.id}`}
-                      type="url"
-                      value={imageUrl}
-                      onChange={(e) => {
-                        setImageUrl(
-                          e.target.value
-                        );
-                        setPreviewError(false);
-                      }}
-                      placeholder="https://..."
-                      className="mt-1.5 rounded-xl bg-card"
-                    />
-
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      Paste the direct image URL for this exact location.
-                    </p>
-                  </div>
-
-                  {imageUrl && !previewError && (
+                  {previewImage && (
                     <div className="mt-4">
                       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                        Preview
+                        Current image
                       </p>
 
                       <img
-                        src={imageUrl}
-                        alt="Image preview"
-                        className="h-44 w-full rounded-2xl object-cover sm:w-72"
-                        onError={() =>
-                          setPreviewError(true)
-                        }
+                        src={previewImage}
+                        alt={`${l.name} preview`}
+                        className="h-48 w-full rounded-2xl object-cover sm:w-80"
                       />
                     </div>
                   )}
 
-                  {previewError && (
-                    <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-                      That image URL could not be loaded.
-                      Make sure you pasted a direct image URL.
-                    </p>
-                  )}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        setUploadingFor(l.id);
 
-                  <div className="mt-4 flex gap-2">
+                        handleFileSelected(
+                          e.target.files?.[0],
+                          l.id
+                        );
+
+                        e.currentTarget.value = "";
+                      }}
+                    />
+
                     <Button
                       type="button"
                       onClick={() =>
-                        handleImageChange(l.id)
+                        fileInputRef.current?.click()
                       }
-                      disabled={
-                        !imageUrl.trim() ||
-                        previewError
-                      }
+                      disabled={uploadingFor === l.id}
                       className="rounded-full bg-caramel text-caramel-foreground hover:bg-caramel/90"
                     >
-                      Save Image
+                      <Upload className="size-4" />
+
+                      {uploadingFor === l.id
+                        ? "Uploading..."
+                        : "Upload New Image"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        removeLocationImage(l.id)
+                      }
+                      className="rounded-full"
+                    >
+                      <Trash2 className="size-4" />
+                      Remove Custom Image
                     </Button>
 
                     <Button
@@ -893,6 +1039,12 @@ function MapManagement() {
                       Cancel
                     </Button>
                   </div>
+
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Select the actual photo from your computer.
+                    JPG, PNG, WEBP and other image formats are
+                    supported. Maximum file size: 8MB.
+                  </p>
                 </div>
               )}
             </div>
@@ -917,22 +1069,9 @@ function MapManagement() {
   );
 }
 
-function getSavedImage(
-  id: string,
-  category: Category
-) {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem(
-      `petwork_location_image_${id}`
-    );
-
-    if (saved) {
-      return saved;
-    }
-  }
-
-  return placePhoto(id, category, 800);
-}
+/* =========================================================
+   PIE CHART
+   ========================================================= */
 
 function PieCard({
   title,
@@ -992,6 +1131,10 @@ function PieCard({
     </div>
   );
 }
+
+/* =========================================================
+   ANALYTICS
+   ========================================================= */
 
 function Analytics() {
   return (
