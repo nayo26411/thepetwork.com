@@ -25,29 +25,48 @@ function loadGoogleMaps(): Promise<any> {
       "petwork-gmaps",
     ) as HTMLScriptElement | null;
 
-    const previousCallback = window[CALLBACK];
-
-    window[CALLBACK] = () => {
-      previousCallback?.();
-
-      if (window.google?.maps?.Map) {
-        resolve(window.google);
-      } else {
-        reject(new Error("Google Maps failed to initialise."));
-      }
-    };
-
     if (existing) {
+      const check = window.setInterval(() => {
+        if (window.google?.maps?.Map) {
+          window.clearInterval(check);
+          resolve(window.google);
+        }
+      }, 100);
+
+      window.setTimeout(() => {
+        window.clearInterval(check);
+        reject(new Error("Google Maps failed to initialise."));
+      }, 10000);
+
       return;
     }
 
     const key =
       import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
 
+    const channel =
+      import.meta.env[
+        "VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"
+      ] ?? "";
+
     if (!key) {
-      reject(new Error("Google Maps key missing."));
+      reject(
+        new Error(
+          "Google Maps API key is missing. Check the Lovable Google Maps connector.",
+        ),
+      );
       return;
     }
+
+    window[CALLBACK] = () => {
+      if (window.google?.maps?.Map) {
+        resolve(window.google);
+      } else {
+        reject(
+          new Error("Google Maps loaded but could not initialise."),
+        );
+      }
+    };
 
     const script = document.createElement("script");
 
@@ -57,12 +76,19 @@ function loadGoogleMaps(): Promise<any> {
 
     script.src =
       `https://maps.googleapis.com/maps/api/js` +
-      `?key=${key}` +
+      `?key=${encodeURIComponent(key)}` +
       `&loading=async` +
-      `&callback=${CALLBACK}`;
+      `&callback=${CALLBACK}` +
+      (channel
+        ? `&channel=${encodeURIComponent(channel)}`
+        : "");
 
     script.onerror = () => {
-      reject(new Error("Failed to load Google Maps."));
+      reject(
+        new Error(
+          "Google Maps could not be loaded.",
+        ),
+      );
     };
 
     document.head.appendChild(script);
@@ -114,18 +140,10 @@ export function PetMap({
 
   selectRef.current = onSelect;
 
-  /* ---------------------------------------------
-     GOOGLE MAPS AUTH ERROR
-  --------------------------------------------- */
-
   useEffect(() => {
     window.gm_authFailure = () => {
       setError(
-        `Google Maps isn't authorised for ${
-          typeof window !== "undefined"
-            ? window.location.hostname
-            : "this domain"
-        }.`,
+        "Google Maps rejected the API key or the current website domain.",
       );
     };
 
@@ -133,10 +151,6 @@ export function PetMap({
       window.gm_authFailure = undefined;
     };
   }, []);
-
-  /* ---------------------------------------------
-     LOAD MAP ONCE
-  --------------------------------------------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -147,89 +161,81 @@ export function PetMap({
           return;
         }
 
-        mapRef.current = new google.maps.Map(containerRef.current, {
-          center: {
-            lat: 28.5665,
-            lng: 77.2431,
+        mapRef.current = new google.maps.Map(
+          containerRef.current,
+          {
+            center: {
+              lat: 28.5665,
+              lng: 77.2431,
+            },
+
+            zoom: 11,
+
+            disableDefaultUI: true,
+
+            zoomControl: true,
+            fullscreenControl: true,
+
+            zoomControlOptions: {
+              position:
+                google.maps.ControlPosition.RIGHT_BOTTOM,
+            },
+
+            fullscreenControlOptions: {
+              position:
+                google.maps.ControlPosition.RIGHT_TOP,
+            },
+
+            streetViewControl: false,
+            mapTypeControl: false,
+            rotateControl: false,
+            scaleControl: false,
+
+            gestureHandling: "greedy",
+
+            minZoom: 9,
+            maxZoom: 18,
+
+            styles: [
+              {
+                elementType: "geometry",
+                stylers: [{ color: "#f4ece0" }],
+              },
+              {
+                elementType: "labels.text.fill",
+                stylers: [{ color: "#6b533d" }],
+              },
+              {
+                elementType: "labels.text.stroke",
+                stylers: [{ color: "#fdf8f0" }],
+              },
+              {
+                featureType: "water",
+                elementType: "geometry",
+                stylers: [{ color: "#cfdcd2" }],
+              },
+              {
+                featureType: "poi.park",
+                elementType: "geometry",
+                stylers: [{ color: "#dfe6d3" }],
+              },
+              {
+                featureType: "road",
+                elementType: "geometry",
+                stylers: [{ color: "#fbf3e6" }],
+              },
+              {
+                featureType: "road.arterial",
+                elementType: "geometry",
+                stylers: [{ color: "#f2e2ca" }],
+              },
+              {
+                featureType: "poi.business",
+                stylers: [{ visibility: "off" }],
+              },
+            ],
           },
-
-          zoom: 11,
-
-          /*
-           * IMPORTANT:
-           * Keep Google's controls from taking over
-           * the entire map.
-           */
-          disableDefaultUI: true,
-
-          /*
-           * Keep only the controls that are actually
-           * useful to users.
-           */
-          zoomControl: true,
-          fullscreenControl: true,
-
-          zoomControlOptions: {
-            position: google.maps.ControlPosition.RIGHT_BOTTOM,
-          },
-
-          fullscreenControlOptions: {
-            position: google.maps.ControlPosition.RIGHT_TOP,
-          },
-
-          streetViewControl: false,
-          mapTypeControl: false,
-          rotateControl: false,
-          scaleControl: false,
-
-          gestureHandling: "greedy",
-
-          /*
-           * Prevent Google's map from looking oversized
-           * compared with the listing panel.
-           */
-          minZoom: 9,
-          maxZoom: 18,
-
-          styles: [
-            {
-              elementType: "geometry",
-              stylers: [{ color: "#f4ece0" }],
-            },
-            {
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#6b533d" }],
-            },
-            {
-              elementType: "labels.text.stroke",
-              stylers: [{ color: "#fdf8f0" }],
-            },
-            {
-              featureType: "water",
-              elementType: "geometry",
-              stylers: [{ color: "#cfdcd2" }],
-            },
-            {
-              featureType: "poi.park",
-              elementType: "geometry",
-              stylers: [{ color: "#dfe6d3" }],
-            },
-            {
-              featureType: "road",
-              elementType: "geometry",
-              stylers: [{ color: "#fbf3e6" }],
-            },
-            {
-              featureType: "road.arterial",
-              elementType: "geometry",
-              stylers: [{ color: "#f2e2ca" }],
-            },
-            {
-              featureType: "poi.business",
-              stylers: [{ visibility: "off" }],
-            },
-          ],
-        });
+        );
 
         setReady(true);
       })
@@ -244,92 +250,93 @@ export function PetMap({
     };
   }, []);
 
-  /* ---------------------------------------------
-     UPDATE MARKERS
-  --------------------------------------------- */
-
   useEffect(() => {
-    if (!ready || !mapRef.current || !window.google) {
+    if (
+      !ready ||
+      !mapRef.current ||
+      !window.google
+    ) {
       return;
     }
 
-    /*
-     * Remove old markers.
-     */
     markersRef.current.forEach((marker) => {
       marker.setMap(null);
     });
 
-    markersRef.current = [];
-
-    /*
-     * Add current markers.
-     */
     markersRef.current = places.map((place) => {
-      const isSelected = selectedId === place.id;
+      const selected =
+        selectedId === place.id;
 
-      const marker = new window.google.maps.Marker({
-        position: {
-          lat: place.lat,
-          lng: place.lng,
-        },
+      const marker =
+        new window.google.maps.Marker({
+          position: {
+            lat: place.lat,
+            lng: place.lng,
+          },
 
-        map: mapRef.current,
+          map: mapRef.current,
 
-        title: place.name,
+          title: place.name,
 
-        icon: {
-          url: pinIcon(CATEGORY_COLORS[place.category]),
+          icon: {
+            url: pinIcon(
+              CATEGORY_COLORS[
+                place.category
+              ],
+            ),
 
-          scaledSize: new window.google.maps.Size(
-            isSelected ? 38 : 30,
-            isSelected ? 49 : 38,
-          ),
+            scaledSize:
+              new window.google.maps.Size(
+                selected ? 38 : 30,
+                selected ? 49 : 38,
+              ),
 
-          anchor: new window.google.maps.Point(
-            isSelected ? 19 : 15,
-            isSelected ? 49 : 38,
-          ),
-        },
+            anchor:
+              new window.google.maps.Point(
+                selected ? 19 : 15,
+                selected ? 49 : 38,
+              ),
+          },
 
-        zIndex: isSelected ? 1000 : 1,
+          zIndex: selected ? 1000 : 1,
 
-        animation: isSelected
-          ? window.google.maps.Animation.BOUNCE
-          : undefined,
-      });
-
-      marker.addListener("click", () => {
-        selectRef.current(place);
-
-        mapRef.current?.panTo({
-          lat: place.lat,
-          lng: place.lng,
+          animation: selected
+            ? window.google.maps.Animation.BOUNCE
+            : undefined,
         });
-      });
+
+      marker.addListener(
+        "click",
+        () => {
+          selectRef.current(place);
+
+          mapRef.current?.panTo({
+            lat: place.lat,
+            lng: place.lng,
+          });
+        },
+      );
 
       return marker;
     });
 
     return () => {
-      markersRef.current.forEach((marker) => {
-        marker.setMap(null);
-      });
+      markersRef.current.forEach(
+        (marker) => {
+          marker.setMap(null);
+        },
+      );
 
       markersRef.current = [];
     };
   }, [places, ready, selectedId]);
-
-  /* ---------------------------------------------
-     ERROR STATE
-  --------------------------------------------- */
 
   if (error) {
     return (
       <div className="grid h-full min-h-[420px] place-items-center rounded-2xl border border-border bg-oat p-8 text-center">
         <div className="max-w-md">
           <p className="text-sm font-bold text-foreground">
-            The map couldn&apos;t load right now.
+            The map couldn&apos;t load.
           </p>
 
           <p className="mt-2 text-sm text-muted-foreground">
@@ -337,17 +344,13 @@ export function PetMap({
           </p>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Every listing, address and pet rule is still available
-            in the list beside the map.
+            Your listings are still available in the
+            panel beside the map.
           </p>
         </div>
       </div>
     );
   }
-
-  /* ---------------------------------------------
-     MAP
-  --------------------------------------------- */
 
   return (
     <div className="relative h-full min-h-[420px] w-full overflow-hidden rounded-2xl">
