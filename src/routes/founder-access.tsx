@@ -29,27 +29,36 @@ function FounderAccess() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (password !== FOUNDER_PASSWORD) {
+      toast.error("Incorrect founder password");
+      return;
+    }
 
     setBusy(true);
 
-    if (password === FOUNDER_PASSWORD) {
-      // Store founder access so /founder does not immediately redirect back.
+    // Store access in both sessionStorage and localStorage.
+    // This prevents the founder dashboard from immediately
+    // redirecting back to the login page.
+    try {
       sessionStorage.setItem("petwork_founder_access", "true");
+      localStorage.setItem("petwork_founder_access", "true");
+    } catch {
+      // Continue with navigation even if browser storage is unavailable.
+    }
 
-      toast.success("Founder access granted");
+    toast.success("Founder access granted");
 
+    // Small delay allows the storage write + toast to complete
+    // before navigating to the dashboard.
+    setTimeout(() => {
       navigate({
         to: "/founder",
         replace: true,
       });
-
-      return;
-    }
-
-    toast.error("Incorrect founder password");
-    setBusy(false);
+    }, 150);
   };
 
   return (
@@ -79,6 +88,7 @@ function FounderAccess() {
             <div className="relative mt-1.5">
               <Input
                 id="fpassword"
+                name="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 value={password}
@@ -86,6 +96,7 @@ function FounderAccess() {
                 maxLength={128}
                 className="rounded-xl pr-12"
                 placeholder="Enter founder password"
+                disabled={busy}
                 required
               />
 
@@ -99,7 +110,7 @@ function FounderAccess() {
                     ? "Hide password"
                     : "Show password"
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 {showPassword ? (
                   <EyeOff className="size-5" />
@@ -115,7 +126,9 @@ function FounderAccess() {
             disabled={busy || !password}
             className="w-full rounded-full bg-mocha text-mocha-foreground hover:bg-mocha/90"
           >
-            {busy ? "Opening Founder Portal…" : "Enter Founder Portal"}
+            {busy
+              ? "Opening Founder Portal..."
+              : "Enter Founder Portal"}
           </Button>
         </form>
 
