@@ -4,28 +4,34 @@ import { CATEGORY_COLORS, type PetPlace } from "@/data/locations";
 declare global {
   interface Window {
     google?: any;
-    __petworkMapReady?: () => void;
+    __petworkGoogleMapsReady?: () => void;
     gm_authFailure?: () => void;
   }
 }
 
-const CALLBACK = "__petworkMapReady";
+const GOOGLE_MAPS_CALLBACK = "__petworkGoogleMapsReady";
+
+let googleMapsPromise: Promise<any> | null = null;
 
 function loadGoogleMaps(): Promise<any> {
   if (typeof window === "undefined") {
-    return Promise.reject(new Error("No window"));
+    return Promise.reject(new Error("Google Maps can only load in the browser."));
   }
 
   if (window.google?.maps?.Map) {
     return Promise.resolve(window.google);
   }
 
-  return new Promise((resolve, reject) => {
-    const existing = document.getElementById(
-      "petwork-gmaps",
+  if (googleMapsPromise) {
+    return googleMapsPromise;
+  }
+
+  googleMapsPromise = new Promise((resolve, reject) => {
+    const existingScript = document.getElementById(
+      "petwork-google-maps",
     ) as HTMLScriptElement | null;
 
-    if (existing) {
+    if (existingScript) {
       const check = window.setInterval(() => {
         if (window.google?.maps?.Map) {
           window.clearInterval(check);
@@ -35,64 +41,95 @@ function loadGoogleMaps(): Promise<any> {
 
       window.setTimeout(() => {
         window.clearInterval(check);
-        reject(new Error("Google Maps failed to initialise."));
-      }, 10000);
+
+        if (!window.google?.maps?.Map) {
+          googleMapsPromise = null;
+          reject(
+            new Error(
+              "Google Maps loaded, but the Maps JavaScript API did not initialise.",
+            ),
+          );
+        }
+      }, 15000);
 
       return;
     }
 
-    const key =
-      import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
+    /*
+     * IMPORTANT:
+     *
+     * This is now a normal Vite environment variable.
+     *
+     * Add this to your .env file:
+     *
+     * VITE_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_BROWSER_KEY
+     *
+     * Do NOT use the old Lovable connector variables here.
+     */
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-    const channel =
-      import.meta.env[
-        "VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"
-      ] ?? "";
+    if (!apiKey) {
+      googleMapsPromise = null;
 
-    if (!key) {
       reject(
         new Error(
-          "Google Maps API key is missing. Check the Lovable Google Maps connector.",
+          "Google Maps API key is missing. Add VITE_GOOGLE_MAPS_API_KEY to your .env file.",
         ),
       );
+
       return;
     }
 
-    window[CALLBACK] = () => {
+    window[GOOGLE_MAPS_CALLBACK] = () => {
       if (window.google?.maps?.Map) {
         resolve(window.google);
       } else {
+        googleMapsPromise = null;
+
         reject(
-          new Error("Google Maps loaded but could not initialise."),
+          new Error(
+            "Google Maps loaded but the Maps JavaScript API is unavailable.",
+          ),
         );
       }
     };
 
+    window.gm_authFailure = () => {
+      googleMapsPromise = null;
+
+      reject(
+        new Error(
+          "Google Maps rejected the API key. Check that the Maps JavaScript API is enabled and that your API key allows this website.",
+        ),
+      );
+    };
+
     const script = document.createElement("script");
 
-    script.id = "petwork-gmaps";
+    script.id = "petwork-google-maps";
     script.async = true;
     script.defer = true;
 
     script.src =
-      `https://maps.googleapis.com/maps/api/js` +
-      `?key=${encodeURIComponent(key)}` +
+      "https://maps.googleapis.com/maps/api/js" +
+      `?key=${encodeURIComponent(apiKey)}` +
       `&loading=async` +
-      `&callback=${CALLBACK}` +
-      (channel
-        ? `&channel=${encodeURIComponent(channel)}`
-        : "");
+      `&callback=${GOOGLE_MAPS_CALLBACK}`;
 
     script.onerror = () => {
+      googleMapsPromise = null;
+
       reject(
         new Error(
-          "Google Maps could not be loaded.",
+          "Google Maps could not be loaded. Check your internet connection and Google Maps API key.",
         ),
       );
     };
 
     document.head.appendChild(script);
   });
+
+  return googleMapsPromise;
 }
 
 function pinIcon(color: string) {
@@ -109,6 +146,7 @@ function pinIcon(color: string) {
         stroke="#FFF7EC"
         stroke-width="2.5"
       />
+
       <circle
         cx="18"
         cy="15.5"
@@ -135,23 +173,14 @@ export function PetMap({
   const markersRef = useRef<any[]>([]);
   const selectRef = useRef(onSelect);
 
-  const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   selectRef.current = onSelect;
 
-  useEffect(() => {
-    window.gm_authFailure = () => {
-      setError(
-        "Google Maps rejected the API key or the current website domain.",
-      );
-    };
-
-    return () => {
-      window.gm_authFailure = undefined;
-    };
-  }, []);
-
+  /*
+   * Load Google Maps once.
+   */
   useEffect(() => {
     let cancelled = false;
 
@@ -170,6 +199,11 @@ export function PetMap({
             },
 
             zoom: 11,
+
+            minZoom: 9,
+            maxZoom: 18,
+
+            gestureHandling: "greedy",
 
             disableDefaultUI: true,
 
@@ -191,47 +225,81 @@ export function PetMap({
             rotateControl: false,
             scaleControl: false,
 
-            gestureHandling: "greedy",
-
-            minZoom: 9,
-            maxZoom: 18,
-
             styles: [
               {
                 elementType: "geometry",
-                stylers: [{ color: "#f4ece0" }],
+                stylers: [
+                  {
+                    color: "#f4ece0",
+                  },
+                ],
               },
+
               {
                 elementType: "labels.text.fill",
-                stylers: [{ color: "#6b533d" }],
+                stylers: [
+                  {
+                    color: "#6b533d",
+                  },
+                ],
               },
+
               {
                 elementType: "labels.text.stroke",
-                stylers: [{ color: "#fdf8f0" }],
+                stylers: [
+                  {
+                    color: "#fdf8f0",
+                  },
+                ],
               },
+
               {
                 featureType: "water",
                 elementType: "geometry",
-                stylers: [{ color: "#cfdcd2" }],
+                stylers: [
+                  {
+                    color: "#cfdcd2",
+                  },
+                ],
               },
+
               {
                 featureType: "poi.park",
                 elementType: "geometry",
-                stylers: [{ color: "#dfe6d3" }],
+                stylers: [
+                  {
+                    color: "#dfe6d3",
+                  },
+                ],
               },
+
               {
                 featureType: "road",
                 elementType: "geometry",
-                stylers: [{ color: "#fbf3e6" }],
+                stylers: [
+                  {
+                    color: "#fbf3e6",
+                  },
+                ],
               },
+
               {
                 featureType: "road.arterial",
                 elementType: "geometry",
-                stylers: [{ color: "#f2e2ca" }],
+                stylers: [
+                  {
+                    color: "#f2e2ca",
+                  },
+                ],
               },
+
               {
                 featureType: "poi.business",
-                stylers: [{ visibility: "off" }],
+                stylers: [
+                  {
+                    visibility: "off",
+                  },
+                ],
               },
             ],
           },
@@ -239,9 +307,9 @@ export function PetMap({
 
         setReady(true);
       })
-      .catch((e: Error) => {
+      .catch((err: Error) => {
         if (!cancelled) {
-          setError(e.message);
+          setError(err.message);
         }
       });
 
@@ -250,21 +318,32 @@ export function PetMap({
     };
   }, []);
 
+  /*
+   * Create / refresh markers.
+   */
   useEffect(() => {
     if (
       !ready ||
       !mapRef.current ||
-      !window.google
+      !window.google?.maps
     ) {
       return;
     }
 
+    /*
+     * Remove old markers first.
+     */
     markersRef.current.forEach((marker) => {
       marker.setMap(null);
     });
 
+    markersRef.current = [];
+
+    /*
+     * Add current markers.
+     */
     markersRef.current = places.map((place) => {
-      const selected =
+      const isSelected =
         selectedId === place.id;
 
       const marker =
@@ -280,29 +359,27 @@ export function PetMap({
 
           icon: {
             url: pinIcon(
-              CATEGORY_COLORS[
-                place.category
-              ],
+              CATEGORY_COLORS[place.category],
             ),
 
             scaledSize:
               new window.google.maps.Size(
-                selected ? 38 : 30,
-                selected ? 49 : 38,
+                isSelected ? 38 : 30,
+                isSelected ? 49 : 38,
               ),
 
             anchor:
               new window.google.maps.Point(
-                selected ? 19 : 15,
-                selected ? 49 : 38,
+                isSelected ? 19 : 15,
+                isSelected ? 49 : 38,
               ),
           },
 
-          zIndex: selected ? 1000 : 1,
+          zIndex: isSelected ? 1000 : 1,
 
-          animation: selected
+          animation: isSelected
             ? window.google.maps.Animation.BOUNCE
-            : undefined,
+            : null,
         });
 
       marker.addListener(
@@ -321,37 +398,40 @@ export function PetMap({
     });
 
     return () => {
-      markersRef.current.forEach(
-        (marker) => {
-          marker.setMap(null);
-        },
-      );
+      markersRef.current.forEach((marker) => {
+        marker.setMap(null);
+      });
 
       markersRef.current = [];
     };
   }, [places, ready, selectedId]);
 
+  /*
+   * Error state.
+   */
   if (error) {
     return (
       <div className="grid h-full min-h-[420px] place-items-center rounded-2xl border border-border bg-oat p-8 text-center">
         <div className="max-w-md">
-          <p className="text-sm font-bold text-foreground">
+          <p className="text-base font-bold text-foreground">
             The map couldn&apos;t load.
           </p>
 
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {error}
           </p>
 
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your listings are still available in the
-            panel beside the map.
+          <p className="mt-3 text-xs text-muted-foreground">
+            Your locations are still available in the list beside the map.
           </p>
         </div>
       </div>
     );
   }
 
+  /*
+   * Map.
+   */
   return (
     <div className="relative h-full min-h-[420px] w-full overflow-hidden rounded-2xl">
       <div
