@@ -116,11 +116,6 @@ const PIE_COLORS = [
   "#D9A566",
 ];
 
-type Listing = (typeof PET_PLACES)[number] & {
-  published: boolean;
-  image: string;
-};
-
 function FounderDashboard() {
   const navigate = useNavigate();
 
