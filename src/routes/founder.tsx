@@ -441,72 +441,136 @@ function Overview() {
    MAP MANAGEMENT
    ========================================================= */
 
+/* =========================================================
+   MAP MANAGEMENT
+   ========================================================= */
+
+type Listing = (typeof PET_PLACES)[number] & {
+  published: boolean;
+  image: string;
+};
+
+const STORAGE_KEY = "petwork_location_images";
+const PUBLISHED_KEY = "petwork_location_published";
+
 function MapManagement() {
-  const [listings, setListings] = useState<Listing[]>(() =>
-    PET_PLACES.map((p) => ({
-      ...p,
-      published: true,
-      image: placePhoto(p.id, p.category, 800),
-    }))
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedUploadId, setSelectedUploadId] = useState<string | null>(
+    null
   );
 
-  const [editingImage, setEditingImage] =
-    useState<string | null>(null);
+  const [newLocationImage, setNewLocationImage] = useState<string | null>(
+    null
+  );
+  const [newLocationImageName, setNewLocationImageName] = useState("");
 
-  const [previewImage, setPreviewImage] =
-    useState<string | null>(null);
+  /* ---------------------------------------------------------
+     LOAD SAVED LOCATION DATA
+     --------------------------------------------------------- */
 
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    try {
+      const savedImages = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || "{}"
+      );
 
-  const [selectedUploadId, setSelectedUploadId] =
-    useState<string | null>(null);
+      const savedPublished = JSON.parse(
+        localStorage.getItem(PUBLISHED_KEY) || "{}"
+      );
 
-  const [newLocationImage, setNewLocationImage] =
-    useState<string | null>(null);
+      const initialListings: Listing[] = PET_PLACES.map((p) => ({
+        ...p,
+        published:
+          savedPublished[p.id] !== undefined
+            ? savedPublished[p.id]
+            : true,
 
-  const [newLocationImageName, setNewLocationImageName] =
-    useState("");
+        image:
+          savedImages[p.id] ||
+          placePhoto(p.id, p.category, 800),
+      }));
 
-  const [editingLocationId, setEditingLocationId] =
-    useState<string | null>(null);
+      setListings(initialListings);
+    } catch {
+      setListings(
+        PET_PLACES.map((p) => ({
+          ...p,
+          published: true,
+          image: placePhoto(p.id, p.category, 800),
+        }))
+      );
+    }
+  }, []);
 
-  const [form, setForm] = useState({
-    name: "",
-    address: "",
-    category: CATEGORIES[0],
-    hours: "",
-    conditions: "",
-    published: true,
-  });
+  /* ---------------------------------------------------------
+     SAVE IMAGE TO LOCAL STORAGE
+     --------------------------------------------------------- */
 
-  const resetForm = () => {
-    setForm({
-      name: "",
-      address: "",
-      category: CATEGORIES[0],
-      hours: "",
-      conditions: "",
-      published: true,
-    });
+  const persistImage = (id: string, image: string) => {
+    try {
+      const existing = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || "{}"
+      );
 
-    setNewLocationImage(null);
-    setNewLocationImageName("");
-    setEditingLocationId(null);
+      existing[id] = image;
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(existing)
+      );
+    } catch {
+      toast.error(
+        "Image could not be saved. The file may be too large."
+      );
+    }
+  };
+
+  /* ---------------------------------------------------------
+     SAVE PUBLISHED STATE
+     --------------------------------------------------------- */
+
+  const persistPublished = (
+    id: string,
+    published: boolean
+  ) => {
+    try {
+      const existing = JSON.parse(
+        localStorage.getItem(PUBLISHED_KEY) || "{}"
+      );
+
+      existing[id] = published;
+
+      localStorage.setItem(
+        PUBLISHED_KEY,
+        JSON.stringify(existing)
+      );
+    } catch {
+      // Ignore storage errors.
+    }
+  };
+
+  /* ---------------------------------------------------------
+     IMAGE EDITING
+     --------------------------------------------------------- */
+
+  const startEditingImage = (id: string) => {
+    setEditingImage(id);
+    setPreviewImage(null);
+    setSelectedUploadId(null);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const startEditingImage = (id: string) => {
-    setEditingImage(id);
-    setPreviewImage(null);
-  };
-
   const cancelEditing = () => {
     setEditingImage(null);
     setPreviewImage(null);
+    setSelectedUploadId(null);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -515,12 +579,16 @@ function MapManagement() {
 
   const openFilePicker = (id: string) => {
     setSelectedUploadId(id);
-    fileInputRef.current?.click();
-  };
 
-  const openNewLocationPicker = () => {
-    setSelectedUploadId(null);
-    fileInputRef.current?.click();
+    /*
+     * Important:
+     * Reset the input so selecting the same image twice
+     * still triggers onChange.
+     */
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      fileInputRef.current.click();
+    }
   };
 
   const handleFileUpload = (
@@ -528,67 +596,90 @@ function MapManagement() {
   ) => {
     const file = e.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+      toast.error("Please select an image file.");
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image must be smaller than 10MB");
+      toast.error("Image must be smaller than 10MB.");
       return;
     }
 
     const imageUrl = URL.createObjectURL(file);
 
+    /*
+     * Existing location image
+     */
     if (selectedUploadId) {
       setPreviewImage(imageUrl);
 
-      setListings((prev) =>
-        prev.map((listing) =>
-          listing.id === selectedUploadId
-            ? {
-                ...listing,
-                image: imageUrl,
-              }
-            : listing
-        )
-      );
-
-      toast.success("Image selected");
-    } else {
-      setNewLocationImage(imageUrl);
-      setNewLocationImageName(file.name);
-      toast.success("Location image selected");
+      return;
     }
+
+    /*
+     * New location image
+     */
+    setNewLocationImage(imageUrl);
+    setNewLocationImageName(file.name);
   };
 
   const saveUploadedImage = () => {
     if (!editingImage || !previewImage) {
-      toast.error("Choose an image first");
+      toast.error("Choose an image first.");
       return;
     }
 
-    setListings((prev) =>
-      prev.map((listing) =>
-        listing.id === editingImage
-          ? {
-              ...listing,
-              image: previewImage,
-            }
-          : listing
-      )
-    );
+    /*
+     * Save the actual image data to localStorage.
+     *
+     * Object URLs disappear after refresh, so we convert
+     * the selected image into a persistent data URL first.
+     */
+    fetch(previewImage)
+      .then((response) => response.blob())
+      .then((blob) => {
+        const reader = new FileReader();
 
-    toast.success("Location image updated");
+        reader.onloadend = () => {
+          const persistentImage = reader.result as string;
 
-    setEditingImage(null);
-    setPreviewImage(null);
+          setListings((prev) =>
+            prev.map((listing) =>
+              listing.id === editingImage
+                ? {
+                    ...listing,
+                    image: persistentImage,
+                  }
+                : listing
+            )
+          );
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+          persistImage(
+            editingImage,
+            persistentImage
+          );
+
+          toast.success("Location image saved.");
+
+          setEditingImage(null);
+          setPreviewImage(null);
+          setSelectedUploadId(null);
+
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        };
+
+        reader.readAsDataURL(blob);
+      })
+      .catch(() => {
+        toast.error("Could not save this image.");
+      });
   };
 
   const removeCustomImage = (id: string) => {
@@ -596,7 +687,9 @@ function MapManagement() {
       (p) => p.id === id
     );
 
-    if (!listing) return;
+    if (!listing) {
+      return;
+    }
 
     const fallback = placePhoto(
       listing.id,
@@ -615,103 +708,171 @@ function MapManagement() {
       )
     );
 
-    toast.success("Original image restored");
+    try {
+      const existing = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || "{}"
+      );
+
+      delete existing[id];
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(existing)
+      );
+    } catch {
+      // Ignore storage errors.
+    }
+
+    toast.success("Original image restored.");
   };
 
-  const handleSaveLocation = (
-    e: React.FormEvent
+  /* ---------------------------------------------------------
+     NEW LOCATION
+     --------------------------------------------------------- */
+
+  const handleNewLocationSubmit = (
+    e: React.FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
 
-    if (!form.name.trim() || !form.address.trim()) {
-      toast.error("Please enter the place name and address");
-      return;
-    }
+    const form = e.currentTarget;
 
-    if (editingLocationId) {
-      setListings((prev) =>
-        prev.map((listing) =>
-          listing.id === editingLocationId
-            ? {
-                ...listing,
-                name: form.name.trim(),
-                address: form.address.trim(),
-                category: form.category as Category,
-                hours: form.hours.trim() || "Hours not specified",
-                conditions: form.conditions
-                  .split("\n")
-                  .map((x) => x.trim())
-                  .filter(Boolean),
-                published: form.published,
-                image:
-                  newLocationImage || listing.image,
-              }
-            : listing
-        )
-      );
+    const name = (
+      form.elements.namedItem(
+        "loc-name"
+      ) as HTMLInputElement
+    ).value;
 
-      toast.success("Location updated");
-    } else {
-      const newId = `custom-${Date.now()}`;
+    const address = (
+      form.elements.namedItem(
+        "loc-address"
+      ) as HTMLInputElement
+    ).value;
 
-      const newListing = {
-        id: newId,
-        name: form.name.trim(),
-        address: form.address.trim(),
-        category: form.category as Category,
-        hours: form.hours.trim() || "Hours not specified",
-        conditions: form.conditions
-          .split("\n")
-          .map((x) => x.trim())
-          .filter(Boolean),
-        published: form.published,
-        image:
-          newLocationImage ||
-          placePhoto(newId, form.category as Category, 800),
-      } as Listing;
+    const category = (
+      form.elements.namedItem(
+        "loc-cat"
+      ) as HTMLSelectElement
+    ).value as Category;
 
-      setListings((prev) => [
-        newListing,
-        ...prev,
-      ]);
+    const hours = (
+      form.elements.namedItem(
+        "loc-hours"
+      ) as HTMLInputElement
+    ).value;
 
-      toast.success("Location added");
-    }
+    const conditionsText = (
+      form.elements.namedItem(
+        "loc-cond"
+      ) as HTMLTextAreaElement
+    ).value;
 
-    resetForm();
-  };
-
-  const startEditingLocation = (listing: Listing) => {
-    setEditingLocationId(listing.id);
-
-    setForm({
-      name: listing.name,
-      address: listing.address,
-      category: listing.category,
-      hours: listing.hours,
-      conditions: listing.conditions.join("\n"),
-      published: listing.published,
-    });
-
-    setNewLocationImage(listing.image);
-    setNewLocationImageName("");
-  };
-
-  const deleteLocation = (id: string) => {
-    if (!window.confirm("Delete this location?")) {
-      return;
-    }
-
-    setListings((prev) =>
-      prev.filter((listing) => listing.id !== id)
+    const publishSwitch = (
+      form.elements.namedItem(
+        "loc-pub"
+      ) as HTMLButtonElement
     );
 
-    if (editingLocationId === id) {
-      resetForm();
+    const newId = `custom-${Date.now()}`;
+
+    const newListing: Listing = {
+      id: newId,
+      name,
+      address,
+      category,
+      hours: hours || "Hours not provided",
+      conditions: conditionsText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean),
+      published: true,
+      image:
+        newLocationImage ||
+        placePhoto(newId, category, 800),
+    } as Listing;
+
+    setListings((prev) => [
+      newListing,
+      ...prev,
+    ]);
+
+    /*
+     * Save new location locally.
+     */
+    try {
+      const savedLocations = JSON.parse(
+        localStorage.getItem("petwork_custom_locations") ||
+          "[]"
+      );
+
+      savedLocations.push({
+        ...newListing,
+      });
+
+      localStorage.setItem(
+        "petwork_custom_locations",
+        JSON.stringify(savedLocations)
+      );
+
+      if (newLocationImage) {
+        persistImage(
+          newId,
+          newLocationImage
+        );
+      }
+    } catch {
+      toast.error(
+        "Location could not be saved."
+      );
+      return;
     }
 
-    toast.success("Location deleted");
+    form.reset();
+
+    setNewLocationImage(null);
+    setNewLocationImageName("");
+
+    toast.success(
+      "Location added successfully."
+    );
   };
+
+  /* ---------------------------------------------------------
+     LOAD CUSTOM LOCATIONS
+     --------------------------------------------------------- */
+
+  useEffect(() => {
+    try {
+      const savedCustomLocations = JSON.parse(
+        localStorage.getItem(
+          "petwork_custom_locations"
+        ) || "[]"
+      );
+
+      if (
+        Array.isArray(savedCustomLocations) &&
+        savedCustomLocations.length
+      ) {
+        setListings((prev) => {
+          const existingIds = new Set(
+            prev.map((item) => item.id)
+          );
+
+          const additional = savedCustomLocations.filter(
+            (item: Listing) =>
+              !existingIds.has(item.id)
+          );
+
+          return [
+            ...prev,
+            ...additional,
+          ];
+        });
+      }
+    } catch {
+      // Ignore malformed local storage.
+    }
+  }, []);
 
   return (
     <>
@@ -719,6 +880,10 @@ function MapManagement() {
         title="Map Management"
         sub="Add, edit, publish and manage every location on The Neighbourhood Watch."
       />
+
+      {/* -------------------------------------------------------
+          HIDDEN FILE INPUT
+      ------------------------------------------------------- */}
 
       <input
         ref={fileInputRef}
@@ -730,36 +895,18 @@ function MapManagement() {
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
 
-        {/* ADD / EDIT LOCATION */}
+        {/* =====================================================
+            ADD NEW LOCATION
+        ===================================================== */}
 
         <form
           className="card-cozy h-fit space-y-4 p-6"
-          onSubmit={handleSaveLocation}
+          onSubmit={handleNewLocationSubmit}
         >
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-lg text-foreground">
-              {editingLocationId ? (
-                <Pencil className="size-5 text-caramel" />
-              ) : (
-                <Plus className="size-5 text-caramel" />
-              )}
-
-              {editingLocationId
-                ? "Edit Location"
-                : "Add New Location"}
-            </h2>
-
-            {editingLocationId && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={resetForm}
-              >
-                Cancel
-              </Button>
-            )}
-          </div>
+          <h2 className="flex items-center gap-2 text-lg text-foreground">
+            <Plus className="size-5 text-caramel" />
+            Add New Location
+          </h2>
 
           <div>
             <Label htmlFor="loc-name">
@@ -768,15 +915,9 @@ function MapManagement() {
 
             <Input
               id="loc-name"
+              name="loc-name"
               maxLength={90}
               className="mt-1.5 rounded-xl"
-              value={form.name}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  name: e.target.value,
-                })
-              }
               required
             />
           </div>
@@ -788,15 +929,9 @@ function MapManagement() {
 
             <Input
               id="loc-address"
+              name="loc-address"
               maxLength={160}
               className="mt-1.5 rounded-xl"
-              value={form.address}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  address: e.target.value,
-                })
-              }
               required
             />
           </div>
@@ -808,13 +943,7 @@ function MapManagement() {
 
             <select
               id="loc-cat"
-              value={form.category}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  category: e.target.value as Category,
-                })
-              }
+              name="loc-cat"
               className="mt-1.5 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm"
             >
               {CATEGORIES.map((c) => (
@@ -832,16 +961,10 @@ function MapManagement() {
 
             <Input
               id="loc-hours"
+              name="loc-hours"
               maxLength={80}
               placeholder="Mon–Sun, 10:00 AM – 8:00 PM"
               className="mt-1.5 rounded-xl"
-              value={form.hours}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  hours: e.target.value,
-                })
-              }
             />
           </div>
 
@@ -852,19 +975,13 @@ function MapManagement() {
 
             <Textarea
               id="loc-cond"
+              name="loc-cond"
               rows={4}
               maxLength={600}
               placeholder={
                 "Dogs allowed on leash\nOutdoor seating only"
               }
               className="mt-1.5 rounded-xl"
-              value={form.conditions}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  conditions: e.target.value,
-                })
-              }
             />
           </div>
 
@@ -877,7 +994,14 @@ function MapManagement() {
 
             <button
               type="button"
-              onClick={openNewLocationPicker}
+              onClick={() => {
+                setSelectedUploadId(null);
+
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                  fileInputRef.current.click();
+                }
+              }}
               className="mt-1.5 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-oat/50 px-5 py-8 text-center transition hover:border-caramel hover:bg-accent"
             >
               <Upload className="size-7 text-caramel" />
@@ -895,7 +1019,7 @@ function MapManagement() {
               <div className="relative mt-3">
                 <img
                   src={newLocationImage}
-                  alt="Location preview"
+                  alt="New location preview"
                   className="h-40 w-full rounded-2xl object-cover"
                 />
 
@@ -929,13 +1053,8 @@ function MapManagement() {
 
             <Switch
               id="loc-pub"
-              checked={form.published}
-              onCheckedChange={(v) =>
-                setForm({
-                  ...form,
-                  published: v,
-                })
-              }
+              name="loc-pub"
+              defaultChecked
             />
           </div>
 
@@ -943,13 +1062,13 @@ function MapManagement() {
             type="submit"
             className="w-full rounded-full bg-caramel text-caramel-foreground hover:bg-caramel/90"
           >
-            {editingLocationId
-              ? "Save Changes"
-              : "Save Location"}
+            Save location
           </Button>
         </form>
 
-        {/* LOCATION LIST */}
+        {/* =====================================================
+            LOCATION LIST
+        ===================================================== */}
 
         <div className="space-y-4">
           {listings.map((l) => (
@@ -1021,18 +1140,23 @@ function MapManagement() {
 
                       <Switch
                         checked={l.published}
-                        onCheckedChange={(v) =>
+                        onCheckedChange={(value) => {
                           setListings((prev) =>
                             prev.map((x) =>
                               x.id === l.id
                                 ? {
                                     ...x,
-                                    published: v,
+                                    published: value,
                                   }
                                 : x
                             )
-                          )
-                        }
+                          );
+
+                          persistPublished(
+                            l.id,
+                            value
+                          );
+                        }}
                       />
                     </div>
                   </div>
@@ -1046,40 +1170,12 @@ function MapManagement() {
                       {l.hours}
                     </span>
                   </div>
-
-                  {/* LOCATION ACTIONS */}
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        startEditingLocation(l)
-                      }
-                      className="rounded-full"
-                    >
-                      <Pencil className="size-3.5" />
-                      Edit Location
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        deleteLocation(l.id)
-                      }
-                      className="rounded-full text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="size-3.5" />
-                      Delete
-                    </Button>
-                  </div>
                 </div>
               </div>
 
-              {/* IMAGE UPLOAD EDITOR */}
+              {/* =================================================
+                  IMAGE EDITOR
+              ================================================= */}
 
               {editingImage === l.id && (
                 <div className="border-t border-border bg-oat/60 p-4">
