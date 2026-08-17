@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   LayoutDashboard,
@@ -13,7 +15,6 @@ import {
   Image as ImageIcon,
   X,
   Upload,
-  Trash2,
 } from "lucide-react";
 import {
   Bar,
@@ -28,6 +29,12 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+
+import {
+  getFounderSession,
+  logoutFounder,
+} from "@/lib/founder.functions";
+
 import { SURVEY } from "@/data/content";
 import {
   CATEGORIES,
@@ -35,6 +42,7 @@ import {
   PET_PLACES,
   type Category,
 } from "@/data/locations";
+
 import { EmptyMark } from "@/components/EmptyMark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,117 +114,80 @@ const PIE_COLORS = [
   "#D9A566",
 ];
 
-const IMAGE_STORAGE_KEY = "petwork_location_images";
-
-type StoredImages = Record<string, string>;
-
-function getStoredImages(): StoredImages {
-  if (typeof window === "undefined") return {};
-
-  try {
-    const stored = localStorage.getItem(IMAGE_STORAGE_KEY);
-    if (!stored) return {};
-
-    return JSON.parse(stored) as StoredImages;
-  } catch {
-    return {};
-  }
-}
-
-function saveStoredImages(images: StoredImages) {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.setItem(
-      IMAGE_STORAGE_KEY,
-      JSON.stringify(images)
-    );
-  } catch {
-    toast.error(
-      "The image could not be saved. Try a smaller image."
-    );
-  }
-}
-
-function getLocationImage(
-  id: string,
-  category: Category,
-  width = 800
-) {
-  if (typeof window !== "undefined") {
-    const images = getStoredImages();
-
-    if (images[id]) {
-      return images[id];
-    }
-  }
-
-  return placePhoto(id, category, width);
-}
+type Listing = (typeof PET_PLACES)[number] & {
+  published: boolean;
+  image: string;
+};
 
 function FounderDashboard() {
   const navigate = useNavigate();
 
+  const fetchSession = useServerFn(getFounderSession);
+  const signOut = useServerFn(logoutFounder);
+
   const [section, setSection] =
     useState<(typeof SECTIONS)[number]["key"]>("overview");
 
-  const [founder, setFounder] = useState({
-    name: "Founder",
+  const {
+    data: founder,
+    isPending,
+  } = useQuery({
+    queryKey: ["founder-session"],
+    queryFn: () => fetchSession(),
+    staleTime: 0,
   });
 
   useEffect(() => {
-    try {
-      const access =
-        sessionStorage.getItem("petwork_founder_access") === "true" ||
-        localStorage.getItem("petwork_founder_access") === "true";
+    const localAccess =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("petwork_founder_access")
+        : null;
 
-      if (!access) {
-        navigate({
-          to: "/founder-access",
-          replace: true,
-        });
-        return;
-      }
-
-      setFounder({
-        name: "Founder",
-      });
-    } catch {
+    if (!isPending && !founder && localAccess !== "true") {
       navigate({
         to: "/founder-access",
         replace: true,
       });
     }
-  }, [navigate]);
+  }, [isPending, founder, navigate]);
 
-  const handleSignOut = () => {
-    try {
+  const handleSignOut = async () => {
+    if (typeof window !== "undefined") {
       sessionStorage.removeItem("petwork_founder_access");
-      localStorage.removeItem("petwork_founder_access");
-    } catch {
-      // Ignore storage errors.
     }
 
-    navigate({
-      to: "/founder-access",
-      replace: true,
-    });
+    try {
+      await signOut();
+    } catch {
+      // Local founder access is still cleared even if the server session
+      // does not exist.
+    }
+
+    navigate({ to: "/founder-access", replace: true });
   };
 
-  const hasAccess =
-    typeof window !== "undefined" &&
-    (sessionStorage.getItem("petwork_founder_access") === "true" ||
-      localStorage.getItem("petwork_founder_access") === "true");
-
-  if (!hasAccess) {
+  if (isPending && !founder) {
     return (
       <div className="grid min-h-screen place-items-center bg-mocha text-mocha-foreground">
-        <p className="text-sm">
-          Checking founder access…
-        </p>
+        <p className="text-sm">Checking founder access…</p>
       </div>
     );
   }
+
+  const localAccess =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("petwork_founder_access")
+      : null;
+
+  if (!founder && localAccess !== "true") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-mocha text-mocha-foreground">
+        <p className="text-sm">Checking founder access…</p>
+      </div>
+    );
+  }
+
+  const founderName = founder?.name ?? "Founder";
 
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
@@ -232,7 +203,7 @@ function FounderDashboard() {
             </p>
 
             <p className="text-xs text-sidebar-foreground/70">
-              {founder.name} · founder console
+              {founderName} · founder console
             </p>
           </div>
         </div>
@@ -473,11 +444,11 @@ function Overview() {
    ========================================================= */
 
 function MapManagement() {
-  const [listings, setListings] = useState(() =>
+  const [listings, setListings] = useState<Listing[]>(() =>
     PET_PLACES.map((p) => ({
       ...p,
       published: true,
-      image: getLocationImage(
+      image: placePhoto(
         p.id,
         p.category,
         800
@@ -491,157 +462,131 @@ function MapManagement() {
   const [previewImage, setPreviewImage] =
     useState<string | null>(null);
 
-  const [addImage, setAddImage] =
-    useState<string | null>(null);
-
   const fileInputRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement | null>(null);
 
-  const addFileInputRef =
-    useRef<HTMLInputElement>(null);
-
-  const [uploadingFor, setUploadingFor] =
+  const [selectedUploadId, setSelectedUploadId] =
     useState<string | null>(null);
 
-  const handleFileSelected = (
-    file: File | undefined,
-    locationId: string
-  ) => {
-    if (!file) return;
+  const [newLocationImage, setNewLocationImage] =
+    useState<string | null>(null);
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("Please choose an image smaller than 8MB");
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const result = reader.result;
-
-      if (typeof result !== "string") {
-        toast.error("Could not read that image");
-        return;
-      }
-
-      const storedImages = getStoredImages();
-
-      storedImages[locationId] = result;
-
-      saveStoredImages(storedImages);
-
-      setListings((prev) =>
-        prev.map((listing) =>
-          listing.id === locationId
-            ? {
-                ...listing,
-                image: result,
-              }
-            : listing
-        )
-      );
-
-      setPreviewImage(result);
-      setUploadingFor(null);
-
-      toast.success("Location image updated");
-    };
-
-    reader.onerror = () => {
-      toast.error("Could not read that image");
-      setUploadingFor(null);
-    };
-
-    reader.readAsDataURL(file);
-  };
-
-  const removeLocationImage = (id: string) => {
-    const storedImages = getStoredImages();
-
-    delete storedImages[id];
-
-    saveStoredImages(storedImages);
-
-    const original = PET_PLACES.find(
-      (p) => p.id === id
-    );
-
-    if (!original) return;
-
-    setListings((prev) =>
-      prev.map((listing) =>
-        listing.id === id
-          ? {
-              ...listing,
-              image: placePhoto(
-                original.id,
-                original.category,
-                800
-              ),
-            }
-          : listing
-      )
-    );
-
-    setEditingImage(null);
-    setPreviewImage(null);
-
-    toast.success("Custom image removed");
-  };
+  const [newLocationImageName, setNewLocationImageName] =
+    useState("");
 
   const startEditingImage = (
-    id: string,
-    currentImage: string
+    id: string
   ) => {
     setEditingImage(id);
-    setPreviewImage(currentImage);
+    setPreviewImage(null);
   };
 
   const cancelEditing = () => {
     setEditingImage(null);
     setPreviewImage(null);
-    setUploadingFor(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
-  const handleNewLocationImage = (
-    file: File | undefined
+  const openFilePicker = (id: string) => {
+    setSelectedUploadId(id);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    if (!file) return;
+    const file = e.target.files?.[0];
+
+    if (!file || !selectedUploadId) {
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("Please choose an image smaller than 8MB");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be smaller than 10MB");
       return;
     }
 
-    const reader = new FileReader();
+    const imageUrl =
+      URL.createObjectURL(file);
 
-    reader.onload = () => {
-      const result = reader.result;
+    setPreviewImage(imageUrl);
 
-      if (typeof result !== "string") {
-        toast.error("Could not read that image");
-        return;
-      }
+    setListings((prev) =>
+      prev.map((listing) =>
+        listing.id === selectedUploadId
+          ? {
+              ...listing,
+              image: imageUrl,
+            }
+          : listing
+      )
+    );
 
-      setAddImage(result);
-      toast.success("Image ready to upload");
-    };
+    toast.success("Image selected");
+  };
 
-    reader.onerror = () => {
-      toast.error("Could not read that image");
-    };
+  const saveUploadedImage = () => {
+    if (!editingImage || !previewImage) {
+      toast.error("Choose an image first");
+      return;
+    }
 
-    reader.readAsDataURL(file);
+    setListings((prev) =>
+      prev.map((listing) =>
+        listing.id === editingImage
+          ? {
+              ...listing,
+              image: previewImage,
+            }
+          : listing
+      )
+    );
+
+    toast.success("Location image updated");
+
+    setEditingImage(null);
+    setPreviewImage(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeCustomImage = (id: string) => {
+    const listing = PET_PLACES.find(
+      (p) => p.id === id
+    );
+
+    if (!listing) {
+      return;
+    }
+
+    const fallback = placePhoto(
+      listing.id,
+      listing.category,
+      800
+    );
+
+    setListings((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              image: fallback,
+            }
+          : item
+      )
+    );
+
+    toast.success("Original image restored");
   };
 
   return (
@@ -649,6 +594,15 @@ function MapManagement() {
       <SectionHead
         title="Map Management"
         sub="Add, edit, publish and manage every location on The Neighbourhood Watch."
+      />
+
+      {/* Hidden file picker */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/avif"
+        className="hidden"
+        onChange={handleFileUpload}
       />
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
@@ -742,60 +696,58 @@ function MapManagement() {
             />
           </div>
 
-          {/* UPLOAD NEW LOCATION IMAGE */}
+          {/* IMAGE UPLOAD — NO URL */}
 
           <div>
             <Label>
               Location image
             </Label>
 
-            <input
-              ref={addFileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                handleNewLocationImage(
-                  e.target.files?.[0]
-                );
-
-                e.currentTarget.value = "";
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedUploadId(null);
+                fileInputRef.current?.click();
               }}
-            />
+              className="mt-1.5 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-oat/50 px-5 py-8 text-center transition hover:border-caramel hover:bg-accent"
+            >
+              <Upload className="size-7 text-caramel" />
 
-            {!addImage ? (
-              <button
-                type="button"
-                onClick={() =>
-                  addFileInputRef.current?.click()
-                }
-                className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-oat/40 px-4 py-6 text-sm font-bold text-muted-foreground transition hover:border-caramel hover:bg-accent hover:text-caramel"
-              >
-                <Upload className="size-5" />
-                Upload Location Image
-              </button>
-            ) : (
-              <div className="relative mt-1.5 overflow-hidden rounded-2xl">
+              <span className="mt-2 text-sm font-bold text-foreground">
+                Upload location photo
+              </span>
+
+              <span className="mt-1 text-xs text-muted-foreground">
+                JPG, PNG, WEBP or AVIF · Max 10MB
+              </span>
+            </button>
+
+            {newLocationImage && (
+              <div className="relative mt-3">
                 <img
-                  src={addImage}
+                  src={newLocationImage}
                   alt="New location preview"
-                  className="h-44 w-full object-cover"
+                  className="h-40 w-full rounded-2xl object-cover"
                 />
 
                 <button
                   type="button"
-                  onClick={() => setAddImage(null)}
-                  className="absolute right-2 top-2 rounded-full bg-black/75 p-2 text-white hover:bg-black"
-                  aria-label="Remove selected image"
+                  onClick={() => {
+                    setNewLocationImage(null);
+                    setNewLocationImageName("");
+                  }}
+                  className="absolute right-2 top-2 rounded-full bg-black/75 p-2 text-white"
                 >
                   <X className="size-4" />
                 </button>
               </div>
             )}
 
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Choose the actual photo from your computer.
-            </p>
+            {newLocationImageName && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {newLocationImageName}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center justify-between rounded-xl bg-oat p-3">
@@ -847,39 +799,11 @@ function MapManagement() {
                     }}
                   />
 
-                  <input
-                    ref={
-                      editingImage === l.id
-                        ? fileInputRef
-                        : undefined
-                    }
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      setUploadingFor(l.id);
-
-                      handleFileSelected(
-                        e.target.files?.[0],
-                        l.id
-                      );
-
-                      e.currentTarget.value = "";
-                    }}
-                  />
-
                   <button
                     type="button"
-                    onClick={() => {
-                      startEditingImage(
-                        l.id,
-                        l.image
-                      );
-
-                      setTimeout(() => {
-                        fileInputRef.current?.click();
-                      }, 50);
-                    }}
+                    onClick={() =>
+                      startEditingImage(l.id)
+                    }
                     className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-xs font-bold text-white backdrop-blur transition hover:bg-black/90"
                   >
                     <ImageIcon className="size-3.5" />
@@ -905,7 +829,7 @@ function MapManagement() {
                         style={{
                           backgroundColor:
                             CATEGORY_COLORS[
-                              l.category
+                              l.category as Category
                             ],
                         }}
                       >
@@ -938,8 +862,7 @@ function MapManagement() {
 
                   <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
                     <span>
-                      {l.conditions.length} pet
-                      conditions
+                      {l.conditions.length} pet conditions
                     </span>
 
                     <span>
@@ -949,7 +872,7 @@ function MapManagement() {
                 </div>
               </div>
 
-              {/* IMAGE MANAGEMENT */}
+              {/* IMAGE UPLOAD EDITOR */}
 
               {editingImage === l.id && (
                 <div className="border-t border-border bg-oat/60 p-4">
@@ -958,7 +881,7 @@ function MapManagement() {
                       <ImageIcon className="size-4 text-caramel" />
 
                       <p className="text-sm font-bold text-foreground">
-                        Location image
+                        Change location image
                       </p>
                     </div>
 
@@ -971,10 +894,28 @@ function MapManagement() {
                     </button>
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openFilePicker(l.id)
+                    }
+                    className="mt-4 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card px-5 py-8 text-center transition hover:border-caramel hover:bg-accent sm:w-96"
+                  >
+                    <Upload className="size-8 text-caramel" />
+
+                    <span className="mt-2 text-sm font-bold text-foreground">
+                      Choose image from device
+                    </span>
+
+                    <span className="mt-1 text-xs text-muted-foreground">
+                      JPG, PNG, WEBP or AVIF · Max 10MB
+                    </span>
+                  </button>
+
                   {previewImage && (
                     <div className="mt-4">
                       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                        Current image
+                        Preview
                       </p>
 
                       <img
@@ -986,48 +927,24 @@ function MapManagement() {
                   )}
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        setUploadingFor(l.id);
-
-                        handleFileSelected(
-                          e.target.files?.[0],
-                          l.id
-                        );
-
-                        e.currentTarget.value = "";
-                      }}
-                    />
-
                     <Button
                       type="button"
-                      onClick={() =>
-                        fileInputRef.current?.click()
-                      }
-                      disabled={uploadingFor === l.id}
+                      onClick={saveUploadedImage}
+                      disabled={!previewImage}
                       className="rounded-full bg-caramel text-caramel-foreground hover:bg-caramel/90"
                     >
-                      <Upload className="size-4" />
-
-                      {uploadingFor === l.id
-                        ? "Uploading..."
-                        : "Upload New Image"}
+                      Save Image
                     </Button>
 
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() =>
-                        removeLocationImage(l.id)
+                        removeCustomImage(l.id)
                       }
                       className="rounded-full"
                     >
-                      <Trash2 className="size-4" />
-                      Remove Custom Image
+                      Restore Original
                     </Button>
 
                     <Button
@@ -1039,12 +956,6 @@ function MapManagement() {
                       Cancel
                     </Button>
                   </div>
-
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Select the actual photo from your computer.
-                    JPG, PNG, WEBP and other image formats are
-                    supported. Maximum file size: 8MB.
-                  </p>
                 </div>
               )}
             </div>
