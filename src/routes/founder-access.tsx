@@ -19,8 +19,7 @@ export const Route = createFileRoute("/founder-access")({
   }),
   component: FounderAccess,
 });
-
-const FOUNDER_PASSWORD = "thepetwork2011";
+const FOUNDER_PASSWORD = import.meta.env.VITE_FOUNDER_PASSWORD ?? "";
 
 function FounderAccess() {
   const navigate = useNavigate();
