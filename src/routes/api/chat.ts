@@ -1,12 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { streamText } from "ai";
-import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { PAWSY_SYSTEM_PROMPT } from "@/lib/pawsy-prompt";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type ChatBody = { messages?: unknown; owner?: unknown; pets?: unknown; activePet?: unknown };
-
-type PetInfo = { name: string; species?: string | undefined; breed?: string | undefined; age?: string | undefined };
+type PetInfo = { name: string; species?: string; breed?: string; age?: string };
 
 function sanitisePets(input: unknown): PetInfo[] {
   if (!Array.isArray(input)) return [];
@@ -30,7 +27,7 @@ function petContext(body: ChatBody): string {
   const active = typeof body.activePet === "string" ? body.activePet.slice(0, 40) : null;
 
   if (!owner && pets.length === 0) {
-    return `\n\nOWNER CONTEXT\nThis person is not logged in and has no pet profile. Early in the conversation, say exactly once: "I'd love to personalise this for your pet! Log in or create a profile and I'll remember everything 🐾" Then help them anyway. Never invent a pet name.`;
+    return `\n\nOWNER CONTEXT\nThis person is not logged in and has no pet profile. Early in the conversation, say exactly once: "I'd love to personalise this for your pet! Log in or create a profile and I'll remember everything 🐾" Then help them anyway.`;
   }
 
   const list = pets
@@ -38,17 +35,17 @@ function petContext(body: ChatBody): string {
     .join("\n");
 
   if (pets.length === 0) {
-    return `\n\nOWNER CONTEXT\nSigned in as ${owner}. No pets on their Digital Collar yet — warmly invite them to add one at /digital-collar so you can personalise things.`;
+    return `\n\nOWNER CONTEXT\nSigned in as ${owner}. No pets on their Digital Collar yet — warmly invite them to add one at /digital-collar.`;
   }
 
   if (pets.length === 1) {
-    return `\n\nOWNER CONTEXT\n${owner ? `Signed in as ${owner}. ` : ""}They have one pet:\n${list}\nAlways refer to this pet by name, naturally and affectionately, like a friend who knows them ("Are you looking for a groomer for ${pets[0]!.name}?"). Never ask which pet — there is only one.`;
+    return `\n\nOWNER CONTEXT\n${owner ? `Signed in as ${owner}. ` : ""}They have one pet:\n${list}\nAlways refer to this pet by name naturally and affectionately.`;
   }
 
   return `\n\nOWNER CONTEXT\n${owner ? `Signed in as ${owner}. ` : ""}They have several pets:\n${list}\n${
     active
-      ? `This conversation is about ${active}. Refer to ${active} by name from now on and do NOT ask again which pet it is for.`
-      : `Before acting on a pet-specific request, ask warmly which pet it's for, naming them (e.g. "Sure! Is this for ${pets[0]!.name} or ${pets[1]!.name}?"). Once a pet is named, keep using that name for the rest of the chat.`
+      ? `This conversation is about ${active}. Refer to ${active} by name from now on.`
+      : `Before acting on a pet-specific request, ask warmly which pet it's for, naming them (e.g. "Sure! Is this for ${pets[0]!.name} or ${pets[1]!.name}?").`
   }`;
 }
 
@@ -59,8 +56,7 @@ function sanitise(input: unknown): ChatMessage[] {
       (m): m is ChatMessage =>
         !!m &&
         typeof m === "object" &&
-        (("role" in m && (m as ChatMessage).role === "user") ||
-          (m as ChatMessage).role === "assistant") &&
+        ((m as ChatMessage).role === "user" || (m as ChatMessage).role === "assistant") &&
         typeof (m as ChatMessage).content === "string",
     )
     .slice(-20)
@@ -77,17 +73,36 @@ export const Route = createFileRoute("/api/chat")({
           return new Response("A message is required", { status: 400 });
         }
 
-        const key = process.env["LOVABLE_API_KEY"];
+        const key = process.env["ANTHROPIC_API_KEY"];
         if (!key) return new Response("AI is not configured", { status: 500 });
 
-        const gateway = createLovableAiGatewayProvider(key);
-        const result = streamText({
-          model: gateway("google/gemini-3.6-flash"),
-          system: PAWSY_SYSTEM_PROMPT + petContext(body),
-          messages,
+        const systemPrompt = PAWSY_SYSTEM_PROMPT + petContext(body);
+
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 500,
+            system: systemPrompt,
+            messages,
+          }),
         });
 
-        return result.toTextStreamResponse();
+        if (!response.ok) {
+          return new Response("AI error", { status: 500 });
+        }
+
+        const data = await response.json() as { content: Array<{ type: string; text: string }> };
+        const text = data.content.find((c) => c.type === "text")?.text ?? "Sorry, I couldn't respond right now 🐾";
+
+        return new Response(text, {
+          headers: { "Content-Type": "text/plain" },
+        });
       },
     },
   },
