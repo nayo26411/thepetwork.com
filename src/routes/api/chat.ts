@@ -45,7 +45,7 @@ function petContext(body: ChatBody): string {
   return `\n\nOWNER CONTEXT\n${owner ? `Signed in as ${owner}. ` : ""}They have several pets:\n${list}\n${
     active
       ? `This conversation is about ${active}. Refer to ${active} by name from now on.`
-      : `Before acting on a pet-specific request, ask warmly which pet it's for, naming them (e.g. "Sure! Is this for ${pets[0]!.name} or ${pets[1]!.name}?").`
+      : `Before acting on a pet-specific request, ask warmly which pet it's for, naming them.`
   }`;
 }
 
@@ -73,32 +73,48 @@ export const Route = createFileRoute("/api/chat")({
           return new Response("A message is required", { status: 400 });
         }
 
-        const key = process.env["ANTHROPIC_API_KEY"];
+        const key = process.env["GEMINI_API_KEY"];
         if (!key) return new Response("AI is not configured", { status: 500 });
 
         const systemPrompt = PAWSY_SYSTEM_PROMPT + petContext(body);
 
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": key,
-            "anthropic-version": "2023-06-01",
-          },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 500,
-            system: systemPrompt,
-            messages,
-          }),
-        });
+        // Convert messages to Gemini format
+        const geminiMessages = messages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        }));
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: {
+                parts: [{ text: systemPrompt }],
+              },
+              contents: geminiMessages,
+              generationConfig: {
+                maxOutputTokens: 500,
+                temperature: 0.7,
+              },
+            }),
+          }
+        );
 
         if (!response.ok) {
+          const err = await response.text();
+          console.error("Gemini error:", err);
           return new Response("AI error", { status: 500 });
         }
 
-        const data = await response.json() as { content: Array<{ type: string; text: string }> };
-        const text = data.content.find((c) => c.type === "text")?.text ?? "Sorry, I couldn't respond right now 🐾";
+        const data = await response.json() as {
+          candidates: Array<{
+            content: { parts: Array<{ text: string }> };
+          }>;
+        };
+
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Sorry, I couldn't respond right now 🐾";
 
         return new Response(text, {
           headers: { "Content-Type": "text/plain" },
