@@ -105,16 +105,8 @@ export function Pawsy() {
       });
       if (!res.ok || !res.body) throw new Error(String(res.status));
 
-      setMessages([...next, { role: "assistant", content: "" }]);
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let acc = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setMessages([...next, { role: "assistant", content: acc }]);
-      }
+      const text = await res.text();
+setMessages([...next, { role: "assistant", content: text }]);
     } catch {
       setMessages([
         ...next,
