@@ -11,12 +11,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-  "A trusted space for pet parents across Delhi NCR to find places, people, resources and care for their pets.",
+          "A trusted space for pet parents across Delhi NCR to find places, people, resources and care for their pets.",
       },
       { property: "og:title", content: "The Petwork — Made for life with your pet" },
       {
         property: "og:description",
-content: "A trusted space for pet parents across Delhi NCR to find places, people, resources and care for their pets.",
+        content:
+          "A trusted space for pet parents across Delhi NCR to find places, people, resources and care for their pets.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -28,8 +29,7 @@ content: "A trusted space for pet parents across Delhi NCR to find places, peopl
 const FEATURE_TEXT: Record<string, string> = {
   "/neighbourhood-watch":
     "Vets, groomers, stores, pet friendly cafes, hotels and off-leash parks across Delhi NCR, plus all the conditions listed for your reference.",
-  "/pro-portal":
-    "Book verified walkers, groomers, sitters, trainers and vets.",
+  "/pro-portal": "Book verified walkers, groomers, sitters, trainers and vets.",
   "/pack-social":
     "Neighbourhood groups for your breed and your stage of pet parenting, plus verified shelters you can trust.",
   "/daily-bark":
@@ -38,6 +38,8 @@ const FEATURE_TEXT: Record<string, string> = {
     "Vet-approved home recipes with clear toxic-ingredient warnings, sorted by species and dietary need.",
   "/digital-collar":
     "Health log, vaccination and appointment reminders, medications and documents for every pet.",
+  "/municipal-rules":
+    "Registration, licensing, leash and waste rules for Delhi, Noida, Gurugram and Ghaziabad, with official sources.",
   "/emergency":
     "24×7 hospitals, ambulances and rescue contacts across Delhi, Noida and Gurugram, one tap away.",
 };
@@ -58,11 +60,13 @@ function Home() {
       <section className="border-b border-border bg-oat/50">
         <div className="mx-auto max-w-3xl px-4 py-14 text-center sm:py-20">
           <h1 className="text-4xl leading-tight text-foreground sm:text-5xl">
-  Made for life with your pet.
-</h1>
-<p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
-  Finding the right place, person, or advice for your pet shouldn't be a struggle. The Petwork brings together trusted local services, useful guides, pet friendly places, and a community of pet parents across Delhi NCR.
-</p>
+            Made for life with your pet.
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
+            Finding the right place, person, or advice for your pet shouldn't be a struggle. The
+            Petwork brings together trusted local services, useful guides, pet friendly places, and
+            a community of pet parents across Delhi NCR.
+          </p>
           <div className="mt-8">
             <DirectorySearch />
           </div>
@@ -73,7 +77,7 @@ function Home() {
       <section className="band-cream reveal border-b border-border">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:py-20">
           <p className="section-label">Browse The Petwork</p>
-          <h2 className="mt-2 text-3xl text-foreground sm:text-4xl">Seven places to start</h2>
+          <h2 className="mt-2 text-3xl text-foreground sm:text-4xl">Eight places to start</h2>
           <div className="mt-9 grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
             {CATEGORY_NAV.map((f) => (
               <Link key={f.to} to={f.to} className="card-cozy hover-lift group flex flex-col p-8">
@@ -145,4 +149,3 @@ function Home() {
     </div>
   );
 }
-

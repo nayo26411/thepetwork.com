@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Send, X, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { usePets } from "@/lib/pets";
@@ -29,7 +29,33 @@ const ROUTES: { match: RegExp; to: string; label: string }[] = [
   { match: /\/pack-social/, to: "/pack-social", label: "Community" },
   { match: /\/digital-collar/, to: "/digital-collar", label: "Pet profile" },
   { match: /\/pro-signup/, to: "/pro-signup", label: "Join as a pro" },
+  { match: /\/municipal-rules/, to: "/municipal-rules", label: "City pet rules" },
 ];
+
+/** Offline answers that point people to the right part of the site. Never gives medical advice. */
+function scriptedReply(text: string, pet: string | null) {
+  const t = text.toLowerCase();
+  const name = pet ?? "your pet";
+  if (/emergenc|bleed|poison|vomit|seizure|not breathing|hit by/.test(t))
+    return `If ${name} is in danger right now, please call a 24×7 hospital straight away — the numbers are on /emergency, no sign-in needed. I'm not a vet, so I can't advise on symptoms.`;
+  if (/walk|walker/.test(t))
+    return `Verified dog walkers are on the Pro Portal at /pro-portal. Pick one, choose a time slot and send a request — they'll confirm in the app.`;
+  if (/groom/.test(t))
+    return `You'll find verified groomers at /pro-portal, and grooming salons on the map at /neighbourhood-watch.`;
+  if (/vet|doctor|clinic/.test(t))
+    return `For routine care, try the vets on /pro-portal or the clinics on /neighbourhood-watch. For anything urgent, use /emergency.`;
+  if (/cafe|hotel|park|place/.test(t))
+    return `The map at /neighbourhood-watch lists pet friendly cafes, hotels and parks across Delhi NCR, each with its pet rules.`;
+  if (/recipe|food|treat|eat|diet/.test(t))
+    return `The Munchie Menu at /munchie-menu has recipes by species, with ingredients to avoid. Always check diet changes with your vet.`;
+  if (/vaccin|remind|medicine|medication|record/.test(t))
+    return `You can log vaccinations and medications for ${name} on /digital-collar and set reminders so you never miss a date.`;
+  if (/register|licen|leash|rule|mcd|noida|gurugram/.test(t))
+    return `Registration, licence and leash rules for each city are on /municipal-rules, with links to the official authority.`;
+  if (/group|community|friends|meet/.test(t))
+    return `Join a local group or start your own on /pack-social.`;
+  return `I'm having trouble reaching my brain right now 🐾 but I can still point you around: the map (/neighbourhood-watch), professionals (/pro-portal), pet records (/digital-collar) or emergencies (/emergency).`;
+}
 
 export function Pawsy() {
   const [open, setOpen] = useState(false);
@@ -53,7 +79,6 @@ export function Pawsy() {
       window.clearTimeout(hide);
     };
   }, []);
-
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -106,16 +131,10 @@ export function Pawsy() {
       if (!res.ok || !res.body) throw new Error(String(res.status));
 
       const text = await res.text();
-setMessages([...next, { role: "assistant", content: text }]);
+      setMessages([...next, { role: "assistant", content: text }]);
     } catch {
-      setMessages([
-        ...next,
-        {
-          role: "assistant",
-          content:
-            "Sorry, I lost my train of thought there 🐾 Give it another go in a moment, or browse the Explore menu up top.",
-        },
-      ]);
+      // No connection to the AI service (offline, or no key configured): answer from a short script instead.
+      setMessages([...next, { role: "assistant", content: scriptedReply(clean, pet) }]);
     } finally {
       setBusy(false);
     }
@@ -134,14 +153,20 @@ setMessages([...next, { role: "assistant", content: text }]);
   }, [pets.length, session?.name]);
 
   const last = messages[messages.length - 1];
+  // Stay out of the way on full-screen work areas (the inbox and the founder console).
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hidden = pathname.startsWith("/messages") || pathname.startsWith("/founder");
+
   const suggested =
     last?.role === "assistant" ? ROUTES.filter((r) => r.match.test(last.content)).slice(0, 3) : [];
+
+  if (hidden) return null;
 
   return (
     <>
       {/* Nudge bubble */}
       {nudge && !open && (
-        <div className="fixed bottom-[8.5rem] right-5 z-[60] max-w-[14rem] animate-fade-up rounded-3xl rounded-br-md border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-lift">
+        <div className="pawsy-ui fixed bottom-[8.5rem] right-5 z-[60] max-w-[14rem] animate-fade-up rounded-3xl rounded-br-md border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-lift">
           Hi! I'm Pawsy 🐾 Need help?
         </div>
       )}
@@ -153,9 +178,9 @@ setMessages([...next, { role: "assistant", content: text }]);
           setOpen((v) => !v);
         }}
         aria-label={open ? "Close Pawsy" : "Chat with Pawsy"}
-        className="fixed bottom-5 right-5 z-[60] flex flex-col items-center gap-1.5"
+        className="pawsy-ui fixed bottom-4 right-4 z-[60] flex flex-col items-center gap-1.5 sm:bottom-5 sm:right-5"
       >
-        <span className="grid size-16 place-items-center overflow-hidden rounded-full bg-mocha text-mocha-foreground ring-4 ring-honey/40 transition-transform hover:scale-105 motion-safe:animate-pawsy-glow">
+        <span className="grid size-12 place-items-center sm:size-16 overflow-hidden rounded-full bg-mocha text-mocha-foreground ring-4 ring-honey/40 transition-transform hover:scale-105 motion-safe:animate-pawsy-glow">
           {open ? (
             <X className="size-7" />
           ) : (
@@ -165,17 +190,17 @@ setMessages([...next, { role: "assistant", content: text }]);
               width={512}
               height={512}
               loading="lazy"
-              className="size-12 object-contain"
+              className="size-9 object-contain sm:size-12"
             />
           )}
         </span>
-        <span className="rounded-full bg-card px-2.5 py-1 text-xs font-extrabold tracking-wide text-caramel shadow-cozy">
+        <span className="hidden rounded-full bg-card px-2.5 py-1 text-xs font-extrabold tracking-wide text-caramel shadow-cozy sm:inline-block">
           Chat with Pawsy
         </span>
       </button>
 
       {open && (
-        <div className="fixed bottom-32 right-4 z-[60] flex h-[min(500px,70vh)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-lift">
+        <div className="pawsy-ui fixed bottom-32 right-4 z-[60] flex h-[min(500px,70vh)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-lift">
           <div className="flex items-center gap-3 border-b border-border bg-espresso px-4 py-3.5 text-espresso-foreground">
             <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-honey/25 ring-2 ring-honey/50">
               <img
@@ -193,7 +218,6 @@ setMessages([...next, { role: "assistant", content: text }]);
               </p>
             </div>
           </div>
-
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-cream px-4 py-4">
             {messages.map((m, i) => (

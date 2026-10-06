@@ -9,7 +9,9 @@ const LINKS = [
   { to: "/daily-bark", label: "The Daily Bark" },
   { to: "/munchie-menu", label: "The Munchie Menu" },
   { to: "/digital-collar", label: "The Digital Collar" },
-  { to: "/pro-signup", label: "Join as a Professional" },
+  { to: "/municipal-rules", label: "Municipal Pet Rules" },
+  { to: "/emergency", label: "Emergency" },
+  { to: "/signup", label: "Join as a Professional" },
 ] as const;
 
 export function Footer() {
@@ -33,11 +35,14 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="text-sm font-bold uppercase tracking-wide text-caramel">Explore</h4>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-blush">Explore</h2>
           <ul className="mt-4 space-y-2">
             {LINKS.map((l) => (
               <li key={l.to}>
-                <Link to={l.to} className="text-sm text-mocha-foreground/80 transition-colors hover:text-caramel">
+                <Link
+                  to={l.to}
+                  className="text-sm text-mocha-foreground/80 transition-colors hover:text-blush"
+                >
                   {l.label}
                 </Link>
               </li>
@@ -46,7 +51,7 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="text-sm font-bold uppercase tracking-wide text-caramel">Say hello</h4>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-blush">Say hello</h2>
           <p className="mt-4 text-sm text-mocha-foreground/80">hello@thepetwork.com</p>
           <p className="text-sm text-mocha-foreground/80">thepetwork.com</p>
           <p className="text-sm text-mocha-foreground/80">Hauz Khas, New Delhi</p>

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Phone, ShieldAlert, Siren, Stethoscope } from "lucide-react";
-import { DELHI_ANIMAL_HELPLINE, EMERGENCY_VETS, type EmergencyVet } from "@/data/emergency";
+import { DELHI_ANIMAL_HELPLINE, type EmergencyVet } from "@/data/emergency";
+import { useDemo } from "@/mock/store";
 
 export const Route = createFileRoute("/emergency")({
   head: () => ({
@@ -14,7 +15,8 @@ export const Route = createFileRoute("/emergency")({
       { property: "og:title", content: "Pet Emergency & 24×7 Vets in Delhi NCR" },
       {
         property: "og:description",
-        content: "Help, any hour — 24x7 hospitals, local clinics and rescue numbers for Delhi NCR pets.",
+        content:
+          "Help, any hour — 24x7 hospitals, local clinics and rescue numbers for Delhi NCR pets.",
       },
     ],
   }),
@@ -37,9 +39,7 @@ function VetCard({ vet }: { vet: EmergencyVet }) {
         </div>
         <span
           className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
-            vet.open24
-              ? "bg-terracotta text-terracotta-foreground"
-              : "bg-oat text-foreground"
+            vet.open24 ? "bg-terracotta text-terracotta-foreground" : "bg-oat text-foreground"
           }`}
         >
           {vet.open24 ? "24×7" : "OPD"}
@@ -65,12 +65,16 @@ function VetCard({ vet }: { vet: EmergencyVet }) {
 }
 
 function EmergencyPage() {
+  // Contacts the founders can edit from their console (no sign-in needed to view).
+  const EMERGENCY_VETS = useDemo().emergency;
   const hospitals24 = EMERGENCY_VETS.filter((v) => v.open24);
   const localClinics = EMERGENCY_VETS.filter(
-    (v) => !v.open24 && !["Rescue, rehabilitation, adoption, OPD", "Rescue, OPD, adoption"].includes(v.services)
+    (v) =>
+      !v.open24 &&
+      !["Rescue, rehabilitation, adoption, OPD", "Rescue, OPD, adoption"].includes(v.services),
   );
   const rescue = EMERGENCY_VETS.filter((v) =>
-    ["Rescue, rehabilitation, adoption, OPD", "Rescue, OPD, adoption"].includes(v.services)
+    ["Rescue, rehabilitation, adoption, OPD", "Rescue, OPD, adoption"].includes(v.services),
   );
 
   return (

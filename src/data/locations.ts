@@ -20,9 +20,9 @@ export type PetPlace = {
 
 export const CATEGORY_COLORS: Record<Category, string> = {
   "Veterinary Clinic": "#8B5E3C",
-  "Grooming Salon": "#957662",
+  "Grooming Salon": "#7a5c49",
   "Pet Store": "#6B4632",
-  "Pet Friendly Cafe": "#A66A3F",
+  "Pet Friendly Cafe": "#975f37",
   "Pet Friendly Hotel": "#7A5138",
   "Off Leash Park": "#B89578",
 };
@@ -524,8 +524,7 @@ export const PET_PLACES: PetPlace[] = [
     id: "piano-man-safdarjung",
     name: "The Piano Man Jazz Club, Safdarjung",
     category: "Pet Friendly Cafe",
-    address:
-      "3, Kailash Hotel Complex, Africa Avenue, Safdarjung Enclave, New Delhi 110029",
+    address: "3, Kailash Hotel Complex, Africa Avenue, Safdarjung Enclave, New Delhi 110029",
     hours: "Mon–Sun, 7:00 PM – 12:30 AM",
     conditions: [
       "Dogs allowed only in the outdoor courtyard seating",
@@ -539,8 +538,7 @@ export const PET_PLACES: PetPlace[] = [
     id: "cafe-lota-pragati-maidan",
     name: "Cafe Lota, Pragati Maidan",
     category: "Pet Friendly Cafe",
-    address:
-      "Crafts Museum Complex, Bhairon Marg, Pragati Maidan, New Delhi 110001",
+    address: "Crafts Museum Complex, Bhairon Marg, Pragati Maidan, New Delhi 110001",
     hours: "Mon–Sun, 11:00 AM – 8:00 PM",
     conditions: [
       "Small dogs only, up to 10 kg",
@@ -1030,13 +1028,13 @@ export const PET_PLACES: PetPlace[] = [
 
 export const IMAGES: Record<string, string> = {
   // CAFES
-  "atheyka":
+  atheyka:
     "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=1200&q=85",
-  "colocal":
+  colocal:
     "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=1200&q=85",
-  "roastery":
+  roastery:
     "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=85",
-  "cyberhub":
+  cyberhub:
     "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=85",
   "cafe-lodhi":
     "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=85",
@@ -1056,7 +1054,7 @@ export const IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=1200&q=85",
 
   // HOTELS
-  "claridges":
+  claridges:
     "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=85",
   "taj-mansingh":
     "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=85",

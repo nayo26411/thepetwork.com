@@ -42,6 +42,7 @@
   --color-mocha-foreground: var(--mocha-foreground);
   --color-caramel: var(--caramel);
   --color-caramel-foreground: var(--caramel-foreground);
+  --color-caramel-ink: var(--caramel-ink);
   --color-terracotta: var(--terracotta);
   --color-terracotta-foreground: var(--terracotta-foreground);
   --color-oat: var(--oat);
@@ -105,45 +106,47 @@
 
 :root {
   --radius: 0.9rem;
-  --background: #D2E2EC;
-  --foreground: #3A2119;
-  --card: #D2E2EC;
-  --card-foreground: #3A2119;
-  --popover: #D2E2EC;
-  --popover-foreground: #3A2119;
-  --primary: #8B5E3C;
-  --primary-foreground: #3A2119;
-  --secondary: #D2E2EC;
-  --secondary-foreground: #3A2119;
-  --muted: #D2E2EC;
-  --muted-foreground: #957662;
-  --accent: #3A2119;
-  --accent-foreground: #EBCDB7;
-  --destructive: oklch(0.53 0.17 28);
+  --background: #d2e2ec;
+  --foreground: #3a2119;
+  --card: #d2e2ec;
+  --card-foreground: #3a2119;
+  --popover: #d2e2ec;
+  --popover-foreground: #3a2119;
+  --primary: #8b5e3c;
+  --primary-foreground: #3a2119;
+  --secondary: #d2e2ec;
+  --secondary-foreground: #3a2119;
+  --muted: #d2e2ec;
+  --muted-foreground: #675144;
+  --accent: #3a2119;
+  --accent-foreground: #ebcdb7;
+  --destructive: #a12f28;
   --destructive-foreground: oklch(0.99 0.004 85);
   --border: #957662;
   --input: #957662;
-  --ring: #3A2119;
+  --ring: #3a2119;
 
   --cream: oklch(0.982 0.005 85);
-  --mocha: #3A2119;
-  --mocha-foreground: #EBCDB7;
-  --caramel: #8B5E3C;
-  --caramel-foreground: #3A2119;
-  --terracotta: #957662;
-  --terracotta-foreground: #3A2119;
+  --mocha: #3a2119;
+  --mocha-foreground: #ebcdb7;
+  --caramel: #8b5e3c;
+  --caramel-foreground: #fff8f0;
+  /* Caramel as text: a deeper shade so small labels stay readable on the light backgrounds. */
+  --caramel-ink: #724d31;
+  --terracotta: #7a5c49;
+  --terracotta-foreground: #fff8f0;
   --oat: oklch(0.955 0.008 82);
-  --blush: #EBCDB7;
-  --blush-foreground: #3A2119;
+  --blush: #ebcdb7;
+  --blush-foreground: #3a2119;
   --blush-tint: oklch(0.972 0.011 30);
   --sage: oklch(0.6 0.055 145);
   --sage-foreground: oklch(0.99 0.004 85);
   --sage-tint: oklch(0.968 0.014 140);
-  --honey: #EBCDB7;
+  --honey: #ebcdb7;
   --honey-foreground: oklch(0.28 0.03 60);
   --espresso: oklch(0.26 0.024 48);
   --espresso-foreground: oklch(0.975 0.006 85);
-  --verified: oklch(0.52 0.088 148);
+  --verified: #325a39;
   --verified-foreground: oklch(0.98 0.008 148);
 
   --chart-1: oklch(0.62 0.117 52);
@@ -154,7 +157,7 @@
 
   --sidebar: oklch(0.3 0.018 55);
   --sidebar-foreground: oklch(0.975 0.006 85);
-  --sidebar-primary: oklch(0.62 0.117 52);
+  --sidebar-primary: #a66236;
   --sidebar-primary-foreground: oklch(0.99 0.004 85);
   --sidebar-accent: oklch(0.37 0.022 55);
   --sidebar-accent-foreground: oklch(0.975 0.006 85);
@@ -280,7 +283,7 @@
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--caramel);
+  color: var(--caramel-ink);
 }
 
 @utility paw-grid {
@@ -290,4 +293,63 @@
     transparent 1.1px
   );
   background-size: 26px 26px;
+}
+
+/* Caramel text uses the deeper ink shade; caramel fills and borders keep the brand colour. */
+.text-caramel {
+  color: var(--caramel-ink);
+}
+
+/* Pawsy steps aside while a dialog, sheet or the phone menu is open, so it never covers form fields or buttons. */
+body:has([role="dialog"], [role="alertdialog"], header[data-menu-open]) .pawsy-ui {
+  display: none;
+}
+
+/* Founder tables become one card per row on phones, with each value labelled. */
+@media (max-width: 639px) {
+  .table-cards table {
+    min-width: 0;
+  }
+  .table-cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .table-cards tbody tr {
+    display: block;
+    padding-block: 0.75rem;
+  }
+  .table-cards tbody td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.35rem 1rem;
+    text-align: right;
+  }
+  .table-cards tbody td > * {
+    min-width: 0;
+  }
+  .table-cards tbody td::before {
+    content: attr(data-label);
+    flex: none;
+    padding-top: 0.15rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--muted-foreground);
+  }
+  .table-cards tbody td:first-child,
+  .table-cards tbody td[data-label=""] {
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .table-cards tbody td:first-child::before,
+  .table-cards tbody td[data-label=""]::before {
+    display: none;
+  }
 }

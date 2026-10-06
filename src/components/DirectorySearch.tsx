@@ -59,7 +59,7 @@ export function DirectorySearch() {
           maxLength={80}
           aria-label="Search stays, groomers, vets, cafes"
           placeholder="Search stays, groomers, vets, cafes..."
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:text-base"
+          className="min-w-0 flex-1 bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground sm:text-base"
         />
       </div>
 

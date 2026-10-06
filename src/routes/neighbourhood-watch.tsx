@@ -1,14 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, PawPrint, X } from "lucide-react";
-import { PetMap } from "@/components/PetMap";
+import { useMemo, useState } from "react";
 import {
-  CATEGORIES,
-  CATEGORY_COLORS,
-  PET_PLACES,
-  type Category,
-  type PetPlace,
-} from "@/data/locations";
+  Clock,
+  Heart,
+  LayoutList,
+  Map as MapIcon,
+  MapPin,
+  Navigation,
+  PawPrint,
+  Search,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { PetMap } from "@/components/PetMap";
+import { useRequireLogin } from "@/components/app/useRequireLogin";
+import { CATEGORIES, CATEGORY_COLORS, type Category, type PetPlace } from "@/data/locations";
+import { toggleFavourite } from "@/mock/actions";
+import { allPlaces, categoryBadge } from "@/mock/format";
+import { useDemo, useSession } from "@/mock/store";
 
 /* =========================================================
    DEFAULT IMAGES
@@ -164,13 +173,15 @@ const IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1444212477490-ca407925329e?auto=format&fit=crop&w=1200&q=85",
 };
 
-const CUSTOM_IMAGES_KEY = "petwork_location_images";
-
 function getDefaultImage(id: string) {
   return (
     IMAGES[id] ??
     "https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=1200&q=85"
   );
+}
+
+function directionsUrl(place: PetPlace) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
 }
 
 /* =========================================================
@@ -181,8 +192,7 @@ export const Route = createFileRoute("/neighbourhood-watch")({
   head: () => ({
     meta: [
       {
-        title:
-          "The Neighbourhood Watch — Pet Friendly Map of Delhi NCR | The Petwork",
+        title: "The Neighbourhood Watch — Pet Friendly Map of Delhi NCR | The Petwork",
       },
       {
         name: "description",
@@ -198,104 +208,109 @@ export const Route = createFileRoute("/neighbourhood-watch")({
    PAGE
    ========================================================= */
 
+type Place = PetPlace & { image?: string };
+
 function WatchPage() {
+  const data = useDemo();
+  const { user } = useSession();
+  const gate = useRequireLogin();
   const [active, setActive] = useState<Category[]>([...CATEGORIES]);
+  const [selected, setSelected] = useState<Place | null>(null);
+  const [view, setView] = useState<"map" | "list">("map");
+  const [query, setQuery] = useState("");
+  const [savedOnly, setSavedOnly] = useState(false);
 
-  const [selected, setSelected] = useState<PetPlace | null>(null);
-
-  /*
-   * Custom images uploaded from Founder Dashboard.
-   *
-   * Format:
-   * {
-   *   "location-id": "data:image/...",
-   *   ...
-   * }
-   */
-  const [customImages, setCustomImages] = useState<Record<string, string>>(
-    {},
+  // Seeded places plus anything the founders added, minus unpublished listings.
+  const published = useMemo(() => allPlaces(data).filter((p) => p.published), [data]);
+  const favourites = useMemo(
+    () => new Set(data.favourites.filter((f) => f.userId === user?.id).map((f) => f.placeId)),
+    [data.favourites, user?.id],
   );
 
-  /* Load saved images when page opens */
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(CUSTOM_IMAGES_KEY);
+  const getImage = (place: Place) => place.image || getDefaultImage(place.id);
 
-      if (saved) {
-        const parsed = JSON.parse(saved);
-
-        if (parsed && typeof parsed === "object") {
-          setCustomImages(parsed);
-        }
-      }
-    } catch {
-      setCustomImages({});
-    }
-  }, []);
-
-  /*
-   * Listen for image changes made in the Founder Dashboard
-   * if both pages are open in different tabs.
-   */
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== CUSTOM_IMAGES_KEY) {
-        return;
-      }
-
-      try {
-        const parsed = event.newValue
-          ? JSON.parse(event.newValue)
-          : {};
-
-        setCustomImages(
-          parsed && typeof parsed === "object" ? parsed : {},
-        );
-      } catch {
-        setCustomImages({});
-      }
-    };
-
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, []);
-
-  const getImage = (id: string) => {
-    return customImages[id] || getDefaultImage(id);
-  };
-
-  const places = useMemo(
-    () => PET_PLACES.filter((p) => active.includes(p.category)),
-    [active],
-  );
+  const places = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return published
+      .filter((p) => active.includes(p.category))
+      .filter((p) => !savedOnly || favourites.has(p.id))
+      .filter((p) => !term || `${p.name} ${p.address} ${p.category}`.toLowerCase().includes(term));
+  }, [published, active, savedOnly, favourites, query]);
 
   const toggle = (cat: Category) => {
-    setActive((prev) =>
-      prev.includes(cat)
-        ? prev.filter((c) => c !== cat)
-        : [...prev, cat],
-    );
+    setActive((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
   };
+
+  const fav = (place: Place) =>
+    gate(() => {
+      const now = toggleFavourite(place.id);
+      toast.success(now ? `${place.name} saved to your places` : "Removed from saved places");
+    }, "Sign in to save places");
+
+  // Keep the open detail panel in sync with founder edits.
+  const current = selected ? (published.find((p) => p.id === selected.id) ?? null) : null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-14">
-      <h1 className="text-4xl text-foreground sm:text-5xl">
-        The Neighbourhood Watch
-      </h1>
+      <h1 className="text-4xl text-foreground sm:text-5xl">The Neighbourhood Watch</h1>
 
       <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-        {PET_PLACES.length} places across Delhi NCR — every one with its pet
-        conditions listed, so you know what to expect before you go.
+        {published.length} places across Delhi NCR — every one with its pet conditions listed, so
+        you know what to expect before you go.
       </p>
+
+      {/* =====================================================
+          SEARCH + VIEW
+         ===================================================== */}
+
+      <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <label className="relative flex-1 sm:max-w-md">
+          <span className="sr-only">Search places</span>
+          <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name or area — Saket, Noida, cafe…"
+            className="w-full rounded-full border border-border bg-card py-2.5 pl-11 pr-4 text-sm outline-none focus:border-caramel"
+          />
+        </label>
+        <div className="flex gap-2">
+          {user && (
+            <button
+              onClick={() => setSavedOnly((v) => !v)}
+              aria-pressed={savedOnly}
+              className={`flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold ${savedOnly ? "bg-mocha text-mocha-foreground" : "bg-card text-muted-foreground ring-1 ring-border hover:bg-oat"}`}
+            >
+              <Heart className={`size-4 ${savedOnly ? "fill-current" : ""}`} /> Saved (
+              {favourites.size})
+            </button>
+          )}
+          <div className="flex rounded-full bg-oat p-1" role="tablist" aria-label="View">
+            {(
+              [
+                ["map", "Map", MapIcon],
+                ["list", "List", LayoutList],
+              ] as const
+            ).map(([key, label, Icon]) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={view === key}
+                onClick={() => setView(key)}
+                className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold ${view === key ? "bg-caramel text-caramel-foreground" : "text-muted-foreground"}`}
+              >
+                <Icon className="size-4" /> {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* =====================================================
           CATEGORY FILTERS
          ===================================================== */}
 
-      <div className="mt-7 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {CATEGORIES.map((cat) => {
           const on = active.includes(cat);
 
@@ -303,201 +318,262 @@ function WatchPage() {
             <button
               key={cat}
               onClick={() => toggle(cat)}
+              aria-pressed={on}
               className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-all ${
                 on
-                  ? "border-transparent text-caramel-foreground shadow-cozy"
+                  ? "border-transparent shadow-cozy"
                   : "border-border bg-card text-muted-foreground hover:bg-accent"
               }`}
-              style={
-                on
-                  ? {
-                      backgroundColor: CATEGORY_COLORS[cat],
-                    }
-                  : undefined
-              }
+              style={on ? categoryBadge(cat) : undefined}
             >
               <span
                 className="size-2.5 rounded-full"
-                style={{
-                  backgroundColor: on
-                    ? "rgba(255,247,236,.9)"
-                    : CATEGORY_COLORS[cat],
-                }}
+                style={{ backgroundColor: on ? "rgba(255,247,236,.9)" : CATEGORY_COLORS[cat] }}
               />
-
               {cat}
             </button>
           );
         })}
 
         <button
-          onClick={() =>
-            setActive(
-              active.length === CATEGORIES.length ? [] : [...CATEGORIES],
-            )
-          }
+          onClick={() => setActive(active.length === CATEGORIES.length ? [] : [...CATEGORIES])}
           className="rounded-full border border-dashed border-caramel px-4 py-2 text-sm font-bold text-caramel hover:bg-accent"
         >
           {active.length === CATEGORIES.length ? "Clear all" : "Show all"}
         </button>
       </div>
 
-      {/* =====================================================
-          MAP + LOCATION DETAILS
-         ===================================================== */}
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px]">
-        <div className="card-cozy overflow-hidden p-2">
-          <div className="h-[520px]">
-            <PetMap
-              places={places}
-              onSelect={setSelected}
-              selectedId={selected?.id}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* =================================================
-              SELECTED LOCATION
-             ================================================= */}
-
-          {selected ? (
-            <div className="card-cozy overflow-hidden">
-              <div className="h-52 w-full overflow-hidden bg-oat">
+      {view === "list" ? (
+        <div className="mt-8">
+          <p className="mb-4 text-sm text-muted-foreground">{places.length} places</p>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {places.map((place) => (
+              <article key={place.id} className="card-cozy flex flex-col overflow-hidden">
                 <img
-                  src={getImage(selected.id)}
-                  alt={selected.name}
-                  className="h-full w-full object-cover"
-                  loading="eager"
-                  onError={(event) => {
-                    event.currentTarget.src = getDefaultImage(selected.id);
+                  src={getImage(place)}
+                  alt={place.name}
+                  loading="lazy"
+                  className="h-44 w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = getDefaultImage(place.id);
                   }}
                 />
-              </div>
-
-              <div className="p-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <span
-                      className="inline-block rounded-full px-3 py-1 text-xs font-bold text-caramel-foreground"
-                      style={{
-                        backgroundColor:
-                          CATEGORY_COLORS[selected.category],
-                      }}
-                    >
-                      {selected.category}
-                    </span>
-
-                    <h2 className="mt-2.5 text-2xl text-foreground">
-                      {selected.name}
-                    </h2>
-                  </div>
-
-                  <button
-                    onClick={() => setSelected(null)}
-                    aria-label="Close"
-                    className="rounded-full p-1 text-muted-foreground hover:bg-accent"
+                <div className="flex flex-1 flex-col p-5">
+                  <span
+                    className="w-fit rounded-full px-3 py-1 text-xs font-bold"
+                    style={categoryBadge(place.category)}
                   >
-                    <X className="size-4" />
-                  </button>
-                </div>
-
-                <p className="mt-3 flex gap-2 text-base text-muted-foreground">
-                  <MapPin className="mt-1 size-4 shrink-0 text-caramel" />
-                  {selected.address}
-                </p>
-
-                <p className="mt-2 flex gap-2 text-base text-muted-foreground">
-                  <Clock className="mt-1 size-4 shrink-0 text-caramel" />
-                  {selected.hours}
-                </p>
-
-                <h3 className="mt-5 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-caramel">
-                  <PawPrint className="size-4" />
-                  Pet conditions
-                </h3>
-
-                <ul className="mt-2.5 space-y-2">
-                  {selected.conditions.map((condition) => (
-                    <li
-                      key={condition}
-                      className="flex gap-2 text-base leading-relaxed text-foreground"
+                    {place.category}
+                  </span>
+                  <h2 className="mt-2.5 text-lg text-foreground">{place.name}</h2>
+                  <p className="mt-1 flex gap-1.5 text-sm text-muted-foreground">
+                    <MapPin className="mt-0.5 size-4 shrink-0 text-caramel" /> {place.address}
+                  </p>
+                  <p className="mt-1 flex gap-1.5 text-sm text-muted-foreground">
+                    <Clock className="mt-0.5 size-4 shrink-0 text-caramel" /> {place.hours}
+                  </p>
+                  <ul className="mt-3 flex-1 space-y-1 text-sm text-foreground">
+                    {place.conditions.slice(0, 3).map((c) => (
+                      <li key={c} className="flex gap-2">
+                        <span className="mt-2 size-1.5 shrink-0 rounded-full bg-terracotta" /> {c}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4 flex gap-2">
+                    <a
+                      href={directionsUrl(place)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-caramel px-3 py-2 text-sm font-bold text-caramel-foreground"
                     >
-                      <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-terracotta" />
-                      {condition}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ) : (
-            <div className="card-cozy bg-blush-tint p-7">
-              <h2 className="text-xl text-foreground">
-                Tap a pin to see the rules
-              </h2>
-
-              <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-                Every listing tells you the pet rules, opening hours, location,
-                and access conditions.
-              </p>
-            </div>
+                      <Navigation className="size-4" /> Directions
+                    </a>
+                    <button
+                      onClick={() => fav(place)}
+                      aria-pressed={favourites.has(place.id)}
+                      aria-label={
+                        favourites.has(place.id)
+                          ? `Remove ${place.name} from saved`
+                          : `Save ${place.name}`
+                      }
+                      className={`grid size-9 place-items-center rounded-full ring-1 ring-border ${favourites.has(place.id) ? "bg-destructive/10 text-destructive" : "bg-card text-muted-foreground"}`}
+                    >
+                      <Heart
+                        className={`size-4 ${favourites.has(place.id) ? "fill-current" : ""}`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+          {places.length === 0 && (
+            <p className="rounded-2xl bg-oat p-8 text-center text-muted-foreground">
+              No places match — try clearing a filter.
+            </p>
           )}
+        </div>
+      ) : (
+        /* =====================================================
+            MAP + LOCATION DETAILS
+           ===================================================== */
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px]">
+          <div className="card-cozy min-w-0 overflow-hidden p-2">
+            <div className="h-[420px] sm:h-[520px] lg:h-full lg:min-h-[520px]">
+              <PetMap
+                places={places}
+                onSelect={setSelected}
+                {...(current ? { selectedId: current.id } : {})}
+              />
+            </div>
+          </div>
 
-          {/* =================================================
-              LOCATION LIST
-             ================================================= */}
-
-          <div className="card-cozy max-h-[420px] overflow-y-auto p-2.5">
-            {places.map((place) => (
-              <button
-                key={place.id}
-                onClick={() => setSelected(place)}
-                className={`flex w-full items-center gap-3.5 rounded-2xl p-3 text-left transition-colors hover:bg-accent ${
-                  selected?.id === place.id ? "bg-accent" : ""
-                }`}
-              >
-                <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-oat">
+          <div className="min-w-0 space-y-4">
+            {current ? (
+              <div className="card-cozy overflow-hidden">
+                <div className="h-52 w-full overflow-hidden bg-oat">
                   <img
-                    src={getImage(place.id)}
-                    alt=""
-                    loading="lazy"
+                    src={getImage(current)}
+                    alt={current.name}
                     className="h-full w-full object-cover"
+                    loading="eager"
                     onError={(event) => {
-                      event.currentTarget.src = getDefaultImage(place.id);
+                      event.currentTarget.src = getDefaultImage(current.id);
                     }}
                   />
                 </div>
 
-                <span className="min-w-0">
-                  <span className="block truncate text-base font-bold text-foreground">
-                    {place.name}
-                  </span>
+                <div className="p-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span
+                        className="inline-block rounded-full px-3 py-1 text-xs font-bold"
+                        style={categoryBadge(current.category)}
+                      >
+                        {current.category}
+                      </span>
+                      <h2 className="mt-2.5 text-2xl text-foreground">{current.name}</h2>
+                    </div>
+                    <button
+                      onClick={() => setSelected(null)}
+                      aria-label="Close"
+                      className="rounded-full p-1 text-muted-foreground hover:bg-accent"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
 
-                  <span className="block truncate text-sm text-muted-foreground">
-                    {place.address}
-                  </span>
+                  <p className="mt-3 flex gap-2 text-base text-muted-foreground">
+                    <MapPin className="mt-1 size-4 shrink-0 text-caramel" />
+                    {current.address}
+                  </p>
+                  <p className="mt-2 flex gap-2 text-base text-muted-foreground">
+                    <Clock className="mt-1 size-4 shrink-0 text-caramel" />
+                    {current.hours}
+                  </p>
 
-                  <span
-                    className="mt-1 block text-xs font-bold"
-                    style={{
-                      color: CATEGORY_COLORS[place.category],
-                    }}
-                  >
-                    {place.category}
-                  </span>
-                </span>
-              </button>
-            ))}
+                  <div className="mt-4 flex gap-2">
+                    <a
+                      href={directionsUrl(current)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-caramel px-4 py-2.5 text-sm font-bold text-caramel-foreground"
+                    >
+                      <Navigation className="size-4" /> Get directions
+                    </a>
+                    <button
+                      onClick={() => fav(current)}
+                      aria-pressed={favourites.has(current.id)}
+                      className={`flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold ring-1 ring-border ${favourites.has(current.id) ? "bg-destructive/10 text-destructive" : "bg-card text-foreground"}`}
+                    >
+                      <Heart
+                        className={`size-4 ${favourites.has(current.id) ? "fill-current" : ""}`}
+                      />{" "}
+                      {favourites.has(current.id) ? "Saved" : "Save"}
+                    </button>
+                  </div>
 
-            {places.length === 0 && (
-              <p className="p-4 text-sm text-muted-foreground">
-                No categories selected — turn one back on to see places.
-              </p>
+                  <h3 className="mt-5 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-caramel">
+                    <PawPrint className="size-4" />
+                    Pet conditions
+                  </h3>
+
+                  <ul className="mt-2.5 space-y-2">
+                    {current.conditions.map((condition) => (
+                      <li
+                        key={condition}
+                        className="flex gap-2 text-base leading-relaxed text-foreground"
+                      >
+                        <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-terracotta" />
+                        {condition}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="card-cozy bg-blush-tint p-7">
+                <h2 className="text-xl text-foreground">Tap a pin to see the rules</h2>
+                <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+                  Every listing tells you the pet rules, opening hours, location, and access
+                  conditions.
+                </p>
+              </div>
             )}
+
+            <div className="card-cozy max-h-[420px] overflow-y-auto p-2.5">
+              {places.map((place) => (
+                <button
+                  key={place.id}
+                  onClick={() => setSelected(place)}
+                  className={`flex w-full items-center gap-3.5 rounded-2xl p-3 text-left transition-colors hover:bg-accent/10 ${current?.id === place.id ? "bg-accent/10" : ""}`}
+                >
+                  <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-oat">
+                    <img
+                      src={getImage(place)}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = getDefaultImage(place.id);
+                      }}
+                    />
+                  </div>
+
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-bold text-foreground">
+                      {place.name}
+                    </span>
+                    <span className="block truncate text-sm text-muted-foreground">
+                      {place.address}
+                    </span>
+                    <span className="mt-1 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+                      <span
+                        aria-hidden
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: CATEGORY_COLORS[place.category] }}
+                      />
+                      {place.category}
+                    </span>
+                  </span>
+                  {favourites.has(place.id) && (
+                    <Heart
+                      className="size-4 shrink-0 fill-destructive text-destructive"
+                      aria-label="Saved"
+                    />
+                  )}
+                </button>
+              ))}
+
+              {places.length === 0 && (
+                <p className="p-4 text-sm text-muted-foreground">
+                  No places match — turn a category back on or clear the search.
+                </p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

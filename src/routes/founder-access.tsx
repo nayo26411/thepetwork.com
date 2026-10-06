@@ -1,64 +1,31 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { PasswordInput } from "@/components/app/AuthCard";
+import { useBusy } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { signIn, signInAs } from "@/mock/actions";
+import { DEMO_PASSWORD } from "@/mock/seed";
 
 export const Route = createFileRoute("/founder-access")({
   head: () => ({
     meta: [
       { title: "Founder Access | The Petwork" },
-      {
-        name: "description",
-        content: "Private sign-in for The Petwork founding team.",
-      },
+      { name: "description", content: "Private sign-in for The Petwork founding team." },
       { name: "robots", content: "noindex" },
     ],
   }),
   component: FounderAccess,
 });
-const FOUNDER_PASSWORD = import.meta.env.VITE_FOUNDER_PASSWORD ?? "";
 
 function FounderAccess() {
   const navigate = useNavigate();
-
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (password !== FOUNDER_PASSWORD) {
-      toast.error("Incorrect founder password");
-      return;
-    }
-
-    setBusy(true);
-
-    // Store access in both sessionStorage and localStorage.
-    // This prevents the founder dashboard from immediately
-    // redirecting back to the login page.
-    try {
-      sessionStorage.setItem("petwork_founder_access", "true");
-      localStorage.setItem("petwork_founder_access", "true");
-    } catch {
-      // Continue with navigation even if browser storage is unavailable.
-    }
-
-    toast.success("Founder access granted");
-
-    // Small delay allows the storage write + toast to complete
-    // before navigating to the dashboard.
-    setTimeout(() => {
-      navigate({
-        to: "/founder",
-        replace: true,
-      });
-    }, 150);
-  };
+  const [busy, run] = useBusy();
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center bg-mocha px-4 py-14">
@@ -66,78 +33,80 @@ function FounderAccess() {
         <span className="grid size-12 place-items-center rounded-2xl bg-mocha text-mocha-foreground">
           <ShieldCheck className="size-6" />
         </span>
-
-        <h1 className="mt-5 text-2xl text-foreground">
-          Founder Access
-        </h1>
-
+        <h1 className="mt-5 text-2xl text-foreground">Founder Access</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Access restricted to The Petwork founding team only.
+          Access restricted to The Petwork founding team. Founder accounts are created by invitation
+          only.
         </p>
 
         <form
-          className="mt-6 space-y-5"
-          onSubmit={handleLogin}
+          className="mt-6 space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run(async () => {
+              const user = await signIn(email, password);
+              if (user.role !== "founder")
+                throw new Error("This account doesn't have founder access.");
+              signInAs(user.id);
+              toast.success("Founder access granted");
+              void navigate({ to: "/founder", replace: true });
+            });
+          }}
         >
           <div>
-            <Label htmlFor="fpassword">
-              Founder password
-            </Label>
-
-            <div className="relative mt-1.5">
-              <Input
-                id="fpassword"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                maxLength={128}
-                className="rounded-xl pr-12"
-                placeholder="Enter founder password"
-                disabled={busy}
-                required
-              />
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowPassword((prev) => !prev)
-                }
-                aria-label={
-                  showPassword
-                    ? "Hide password"
-                    : "Show password"
-                }
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                {showPassword ? (
-                  <EyeOff className="size-5" />
-                ) : (
-                  <Eye className="size-5" />
-                )}
-              </button>
-            </div>
+            <Label htmlFor="f-email">Founder email</Label>
+            <Input
+              id="f-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              maxLength={120}
+              className="mt-1.5 rounded-xl"
+              required
+            />
           </div>
-
+          <div>
+            <Label htmlFor="f-password">Password</Label>
+            <PasswordInput
+              id="f-password"
+              value={password}
+              onChange={setPassword}
+              autoComplete="current-password"
+            />
+          </div>
           <Button
             type="submit"
-            disabled={busy || !password}
+            disabled={busy}
             className="w-full rounded-full bg-mocha text-mocha-foreground hover:bg-mocha/90"
           >
-            {busy
-              ? "Opening Founder Portal..."
-              : "Enter Founder Portal"}
+            {busy ? "Opening Founder Console…" : "Enter Founder Console"}
           </Button>
         </form>
 
+        <div className="mt-5 rounded-2xl border border-dashed border-caramel/50 bg-oat/60 p-4">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-caramel">
+            Demo founder account
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            founder@demo.thepetwork.com · {DEMO_PASSWORD}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("founder@demo.thepetwork.com");
+              setPassword(DEMO_PASSWORD);
+            }}
+            className="mt-2 rounded-full bg-card px-3 py-1.5 text-xs font-bold ring-1 ring-border hover:bg-accent hover:text-accent-foreground"
+          >
+            Fill in demo details
+          </button>
+        </div>
+
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Not the founding team?{" "}
-          <Link
-            to="/login"
-            className="font-bold text-caramel hover:underline"
-          >
-            Sign in as a pet owner
+          <Link to="/login" className="font-bold text-caramel hover:underline">
+            Sign in here
           </Link>
         </p>
       </div>

@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AlertTriangle, BadgeCheck, Clock, ExternalLink, TriangleAlert, X } from "lucide-react";
 import { POISON_HELP } from "@/data/content";
-import { RECIPES, RECIPE_SPECIES, type Recipe } from "@/data/recipes";
+import { RECIPE_SPECIES, type Recipe } from "@/data/recipes";
+import { visibleRecipes } from "@/mock/format";
+import { useDemo } from "@/mock/store";
 import { recipePhoto } from "@/lib/photos";
 
 export const Route = createFileRoute("/munchie-menu")({
@@ -17,7 +19,8 @@ export const Route = createFileRoute("/munchie-menu")({
       { property: "og:title", content: "The Munchie Menu — Real Vet-Guided Pet Recipes" },
       {
         property: "og:description",
-        content: "Real recipes across every pet species, with ingredients, method and safety warnings.",
+        content:
+          "Real recipes across every pet species, with ingredients, method and safety warnings.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -31,6 +34,9 @@ export const Route = createFileRoute("/munchie-menu")({
 const ALL_SPECIES = ["All", ...RECIPE_SPECIES] as const;
 
 function MunchieMenu() {
+  const data = useDemo();
+  // Recipes minus any the founders have hidden.
+  const RECIPES = useMemo(() => visibleRecipes(data), [data]);
   const [species, setSpecies] = useState<(typeof ALL_SPECIES)[number]>("All");
   const [diet, setDiet] = useState<string>("All diets");
   const [active, setActive] = useState<Recipe | null>(null);
@@ -38,14 +44,15 @@ function MunchieMenu() {
   const diets = useMemo(() => {
     const scoped = species === "All" ? RECIPES : RECIPES.filter((r) => r.species === species);
     return ["All diets", ...Array.from(new Set(scoped.map((r) => r.diet)))];
-  }, [species]);
+  }, [species, RECIPES]);
 
   const recipes = useMemo(
     () =>
       RECIPES.filter(
-        (r) => (species === "All" || r.species === species) && (diet === "All diets" || r.diet === diet),
+        (r) =>
+          (species === "All" || r.species === species) && (diet === "All diets" || r.diet === diet),
       ),
-    [species, diet],
+    [species, diet, RECIPES],
   );
 
   return (
@@ -95,7 +102,9 @@ function MunchieMenu() {
               key={d}
               onClick={() => setDiet(d)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
-                diet === d ? "bg-terracotta text-terracotta-foreground" : "bg-oat text-muted-foreground hover:bg-accent"
+                diet === d
+                  ? "bg-terracotta text-terracotta-foreground"
+                  : "bg-oat text-muted-foreground hover:bg-accent"
               }`}
             >
               {d}
@@ -150,7 +159,6 @@ function MunchieMenu() {
         ))}
       </div>
 
-
       {recipes.length === 0 && (
         <p className="mt-10 rounded-2xl bg-oat p-8 text-center text-muted-foreground">
           Nothing matches that combination yet. Try clearing the dietary filter.
@@ -199,17 +207,28 @@ function MunchieMenu() {
             </div>
 
             <h2 className="mt-4 text-3xl text-foreground">{active.name}</h2>
-            <p className="mt-2.5 text-base leading-relaxed text-muted-foreground">{active.summary}</p>
+            <p className="mt-2.5 text-base leading-relaxed text-muted-foreground">
+              {active.summary}
+            </p>
 
+            {data.recipeOverrides[active.id]?.note && (
+              <p className="mt-4 rounded-xl bg-sage-tint p-3 text-sm font-semibold text-foreground">
+                Petwork note: {data.recipeOverrides[active.id]!.note}
+              </p>
+            )}
 
-            <h3 className="mt-6 text-sm font-bold uppercase tracking-wide text-caramel">Ingredients</h3>
+            <h3 className="mt-6 text-sm font-bold uppercase tracking-wide text-caramel">
+              Ingredients
+            </h3>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               {active.ingredients.map((i) => (
                 <li key={i}>{i}</li>
               ))}
             </ul>
 
-            <h3 className="mt-6 text-sm font-bold uppercase tracking-wide text-caramel">Instructions</h3>
+            <h3 className="mt-6 text-sm font-bold uppercase tracking-wide text-caramel">
+              Instructions
+            </h3>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
               {active.instructions.map((i) => (
                 <li key={i}>{i}</li>

@@ -10,37 +10,60 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DailyBarkRouteImport } from './routes/daily-bark'
-import { Route as DigitalCollarRouteImport } from './routes/digital-collar'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as BookingsRouteImport } from './routes/bookings'
 import { Route as EmergencyRouteImport } from './routes/emergency'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FounderRouteImport } from './routes/founder'
 import { Route as FounderAccessRouteImport } from './routes/founder-access'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MunchieMenuRouteImport } from './routes/munchie-menu'
+import { Route as MunicipalRulesRouteImport } from './routes/municipal-rules'
 import { Route as NeighbourhoodWatchRouteImport } from './routes/neighbourhood-watch'
-import { Route as PackSocialRouteImport } from './routes/pack-social'
-import { Route as ProPortalRouteImport } from './routes/pro-portal'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProSignupRouteImport } from './routes/pro-signup'
+import { Route as RemindersRouteImport } from './routes/reminders'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as BookProIdRouteImport } from './routes/book.$proId'
+import { Route as DailyBarkIndexRouteImport } from './routes/daily-bark/index'
+import { Route as DailyBarkPostIdRouteImport } from './routes/daily-bark/$postId'
+import { Route as DigitalCollarIndexRouteImport } from './routes/digital-collar/index'
+import { Route as DigitalCollarPetIdRouteImport } from './routes/digital-collar/$petId'
+import { Route as PackSocialIndexRouteImport } from './routes/pack-social/index'
+import { Route as PackSocialCommunityIdRouteImport } from './routes/pack-social/$communityId'
+import { Route as ProPortalIndexRouteImport } from './routes/pro-portal/index'
+import { Route as ProPortalProIdRouteImport } from './routes/pro-portal/$proId'
+import { Route as ProApplicationRouteImport } from './routes/pro/application'
+import { Route as ProAvailabilityRouteImport } from './routes/pro/availability'
+import { Route as ProBookingsRouteImport } from './routes/pro/bookings'
+import { Route as ProDashboardRouteImport } from './routes/pro/dashboard'
+import { Route as ProProfileRouteImport } from './routes/pro/profile'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DailyBarkRoute = DailyBarkRouteImport.update({
-  id: '/daily-bark',
-  path: '/daily-bark',
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DigitalCollarRoute = DigitalCollarRouteImport.update({
-  id: '/digital-collar',
-  path: '/digital-collar',
+const BookingsRoute = BookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmergencyRoute = EmergencyRouteImport.update({
   id: '/emergency',
   path: '/emergency',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FounderRoute = FounderRouteImport.update({
@@ -58,9 +81,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MunchieMenuRoute = MunchieMenuRouteImport.update({
   id: '/munchie-menu',
   path: '/munchie-menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MunicipalRulesRoute = MunicipalRulesRouteImport.update({
+  id: '/municipal-rules',
+  path: '/municipal-rules',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NeighbourhoodWatchRoute = NeighbourhoodWatchRouteImport.update({
@@ -68,14 +101,9 @@ const NeighbourhoodWatchRoute = NeighbourhoodWatchRouteImport.update({
   path: '/neighbourhood-watch',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PackSocialRoute = PackSocialRouteImport.update({
-  id: '/pack-social',
-  path: '/pack-social',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProPortalRoute = ProPortalRouteImport.update({
-  id: '/pro-portal',
-  path: '/pro-portal',
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProSignupRoute = ProSignupRouteImport.update({
@@ -83,120 +111,326 @@ const ProSignupRoute = ProSignupRouteImport.update({
   path: '/pro-signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RemindersRoute = RemindersRouteImport.update({
+  id: '/reminders',
+  path: '/reminders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BookProIdRoute = BookProIdRouteImport.update({
+  id: '/book/$proId',
+  path: '/book/$proId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DailyBarkIndexRoute = DailyBarkIndexRouteImport.update({
+  id: '/daily-bark/',
+  path: '/daily-bark/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DailyBarkPostIdRoute = DailyBarkPostIdRouteImport.update({
+  id: '/daily-bark/$postId',
+  path: '/daily-bark/$postId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DigitalCollarIndexRoute = DigitalCollarIndexRouteImport.update({
+  id: '/digital-collar/',
+  path: '/digital-collar/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DigitalCollarPetIdRoute = DigitalCollarPetIdRouteImport.update({
+  id: '/digital-collar/$petId',
+  path: '/digital-collar/$petId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PackSocialIndexRoute = PackSocialIndexRouteImport.update({
+  id: '/pack-social/',
+  path: '/pack-social/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PackSocialCommunityIdRoute = PackSocialCommunityIdRouteImport.update({
+  id: '/pack-social/$communityId',
+  path: '/pack-social/$communityId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProPortalIndexRoute = ProPortalIndexRouteImport.update({
+  id: '/pro-portal/',
+  path: '/pro-portal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProPortalProIdRoute = ProPortalProIdRouteImport.update({
+  id: '/pro-portal/$proId',
+  path: '/pro-portal/$proId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProApplicationRoute = ProApplicationRouteImport.update({
+  id: '/pro/application',
+  path: '/pro/application',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProAvailabilityRoute = ProAvailabilityRouteImport.update({
+  id: '/pro/availability',
+  path: '/pro/availability',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProBookingsRoute = ProBookingsRouteImport.update({
+  id: '/pro/bookings',
+  path: '/pro/bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProDashboardRoute = ProDashboardRouteImport.update({
+  id: '/pro/dashboard',
+  path: '/pro/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProProfileRoute = ProProfileRouteImport.update({
+  id: '/pro/profile',
+  path: '/pro/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/daily-bark': typeof DailyBarkRoute
-  '/digital-collar': typeof DigitalCollarRoute
+  '/account': typeof AccountRoute
+  '/bookings': typeof BookingsRoute
   '/emergency': typeof EmergencyRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/founder': typeof FounderRoute
   '/founder-access': typeof FounderAccessRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/munchie-menu': typeof MunchieMenuRoute
+  '/municipal-rules': typeof MunicipalRulesRoute
   '/neighbourhood-watch': typeof NeighbourhoodWatchRoute
-  '/pack-social': typeof PackSocialRoute
-  '/pro-portal': typeof ProPortalRoute
+  '/notifications': typeof NotificationsRoute
   '/pro-signup': typeof ProSignupRoute
+  '/reminders': typeof RemindersRoute
+  '/signup': typeof SignupRoute
   '/api/chat': typeof ApiChatRoute
+  '/book/$proId': typeof BookProIdRoute
+  '/daily-bark/$postId': typeof DailyBarkPostIdRoute
+  '/digital-collar/$petId': typeof DigitalCollarPetIdRoute
+  '/pack-social/$communityId': typeof PackSocialCommunityIdRoute
+  '/pro-portal/$proId': typeof ProPortalProIdRoute
+  '/pro/application': typeof ProApplicationRoute
+  '/pro/availability': typeof ProAvailabilityRoute
+  '/pro/bookings': typeof ProBookingsRoute
+  '/pro/dashboard': typeof ProDashboardRoute
+  '/pro/profile': typeof ProProfileRoute
+  '/daily-bark/': typeof DailyBarkIndexRoute
+  '/digital-collar/': typeof DigitalCollarIndexRoute
+  '/pack-social/': typeof PackSocialIndexRoute
+  '/pro-portal/': typeof ProPortalIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/daily-bark': typeof DailyBarkRoute
-  '/digital-collar': typeof DigitalCollarRoute
+  '/account': typeof AccountRoute
+  '/bookings': typeof BookingsRoute
   '/emergency': typeof EmergencyRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/founder': typeof FounderRoute
   '/founder-access': typeof FounderAccessRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/munchie-menu': typeof MunchieMenuRoute
+  '/municipal-rules': typeof MunicipalRulesRoute
   '/neighbourhood-watch': typeof NeighbourhoodWatchRoute
-  '/pack-social': typeof PackSocialRoute
-  '/pro-portal': typeof ProPortalRoute
+  '/notifications': typeof NotificationsRoute
   '/pro-signup': typeof ProSignupRoute
+  '/reminders': typeof RemindersRoute
+  '/signup': typeof SignupRoute
   '/api/chat': typeof ApiChatRoute
+  '/book/$proId': typeof BookProIdRoute
+  '/daily-bark/$postId': typeof DailyBarkPostIdRoute
+  '/digital-collar/$petId': typeof DigitalCollarPetIdRoute
+  '/pack-social/$communityId': typeof PackSocialCommunityIdRoute
+  '/pro-portal/$proId': typeof ProPortalProIdRoute
+  '/pro/application': typeof ProApplicationRoute
+  '/pro/availability': typeof ProAvailabilityRoute
+  '/pro/bookings': typeof ProBookingsRoute
+  '/pro/dashboard': typeof ProDashboardRoute
+  '/pro/profile': typeof ProProfileRoute
+  '/daily-bark': typeof DailyBarkIndexRoute
+  '/digital-collar': typeof DigitalCollarIndexRoute
+  '/pack-social': typeof PackSocialIndexRoute
+  '/pro-portal': typeof ProPortalIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/daily-bark': typeof DailyBarkRoute
-  '/digital-collar': typeof DigitalCollarRoute
+  '/account': typeof AccountRoute
+  '/bookings': typeof BookingsRoute
   '/emergency': typeof EmergencyRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/founder': typeof FounderRoute
   '/founder-access': typeof FounderAccessRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/munchie-menu': typeof MunchieMenuRoute
+  '/municipal-rules': typeof MunicipalRulesRoute
   '/neighbourhood-watch': typeof NeighbourhoodWatchRoute
-  '/pack-social': typeof PackSocialRoute
-  '/pro-portal': typeof ProPortalRoute
+  '/notifications': typeof NotificationsRoute
   '/pro-signup': typeof ProSignupRoute
+  '/reminders': typeof RemindersRoute
+  '/signup': typeof SignupRoute
   '/api/chat': typeof ApiChatRoute
+  '/book/$proId': typeof BookProIdRoute
+  '/daily-bark/$postId': typeof DailyBarkPostIdRoute
+  '/digital-collar/$petId': typeof DigitalCollarPetIdRoute
+  '/pack-social/$communityId': typeof PackSocialCommunityIdRoute
+  '/pro-portal/$proId': typeof ProPortalProIdRoute
+  '/pro/application': typeof ProApplicationRoute
+  '/pro/availability': typeof ProAvailabilityRoute
+  '/pro/bookings': typeof ProBookingsRoute
+  '/pro/dashboard': typeof ProDashboardRoute
+  '/pro/profile': typeof ProProfileRoute
+  '/daily-bark/': typeof DailyBarkIndexRoute
+  '/digital-collar/': typeof DigitalCollarIndexRoute
+  '/pack-social/': typeof PackSocialIndexRoute
+  '/pro-portal/': typeof ProPortalIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/daily-bark'
-    | '/digital-collar'
+    | '/account'
+    | '/bookings'
     | '/emergency'
+    | '/forgot-password'
     | '/founder'
     | '/founder-access'
     | '/login'
+    | '/messages'
     | '/munchie-menu'
+    | '/municipal-rules'
     | '/neighbourhood-watch'
-    | '/pack-social'
-    | '/pro-portal'
+    | '/notifications'
     | '/pro-signup'
+    | '/reminders'
+    | '/signup'
     | '/api/chat'
+    | '/book/$proId'
+    | '/daily-bark/$postId'
+    | '/digital-collar/$petId'
+    | '/pack-social/$communityId'
+    | '/pro-portal/$proId'
+    | '/pro/application'
+    | '/pro/availability'
+    | '/pro/bookings'
+    | '/pro/dashboard'
+    | '/pro/profile'
+    | '/daily-bark/'
+    | '/digital-collar/'
+    | '/pack-social/'
+    | '/pro-portal/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/daily-bark'
-    | '/digital-collar'
+    | '/account'
+    | '/bookings'
     | '/emergency'
+    | '/forgot-password'
     | '/founder'
     | '/founder-access'
     | '/login'
+    | '/messages'
     | '/munchie-menu'
+    | '/municipal-rules'
     | '/neighbourhood-watch'
+    | '/notifications'
+    | '/pro-signup'
+    | '/reminders'
+    | '/signup'
+    | '/api/chat'
+    | '/book/$proId'
+    | '/daily-bark/$postId'
+    | '/digital-collar/$petId'
+    | '/pack-social/$communityId'
+    | '/pro-portal/$proId'
+    | '/pro/application'
+    | '/pro/availability'
+    | '/pro/bookings'
+    | '/pro/dashboard'
+    | '/pro/profile'
+    | '/daily-bark'
+    | '/digital-collar'
     | '/pack-social'
     | '/pro-portal'
-    | '/pro-signup'
-    | '/api/chat'
   id:
     | '__root__'
     | '/'
-    | '/daily-bark'
-    | '/digital-collar'
+    | '/account'
+    | '/bookings'
     | '/emergency'
+    | '/forgot-password'
     | '/founder'
     | '/founder-access'
     | '/login'
+    | '/messages'
     | '/munchie-menu'
+    | '/municipal-rules'
     | '/neighbourhood-watch'
-    | '/pack-social'
-    | '/pro-portal'
+    | '/notifications'
     | '/pro-signup'
+    | '/reminders'
+    | '/signup'
     | '/api/chat'
+    | '/book/$proId'
+    | '/daily-bark/$postId'
+    | '/digital-collar/$petId'
+    | '/pack-social/$communityId'
+    | '/pro-portal/$proId'
+    | '/pro/application'
+    | '/pro/availability'
+    | '/pro/bookings'
+    | '/pro/dashboard'
+    | '/pro/profile'
+    | '/daily-bark/'
+    | '/digital-collar/'
+    | '/pack-social/'
+    | '/pro-portal/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DailyBarkRoute: typeof DailyBarkRoute
-  DigitalCollarRoute: typeof DigitalCollarRoute
+  AccountRoute: typeof AccountRoute
+  BookingsRoute: typeof BookingsRoute
   EmergencyRoute: typeof EmergencyRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   FounderRoute: typeof FounderRoute
   FounderAccessRoute: typeof FounderAccessRoute
   LoginRoute: typeof LoginRoute
+  MessagesRoute: typeof MessagesRoute
   MunchieMenuRoute: typeof MunchieMenuRoute
+  MunicipalRulesRoute: typeof MunicipalRulesRoute
   NeighbourhoodWatchRoute: typeof NeighbourhoodWatchRoute
-  PackSocialRoute: typeof PackSocialRoute
-  ProPortalRoute: typeof ProPortalRoute
+  NotificationsRoute: typeof NotificationsRoute
   ProSignupRoute: typeof ProSignupRoute
+  RemindersRoute: typeof RemindersRoute
+  SignupRoute: typeof SignupRoute
   ApiChatRoute: typeof ApiChatRoute
+  BookProIdRoute: typeof BookProIdRoute
+  DailyBarkPostIdRoute: typeof DailyBarkPostIdRoute
+  DigitalCollarPetIdRoute: typeof DigitalCollarPetIdRoute
+  PackSocialCommunityIdRoute: typeof PackSocialCommunityIdRoute
+  ProPortalProIdRoute: typeof ProPortalProIdRoute
+  ProApplicationRoute: typeof ProApplicationRoute
+  ProAvailabilityRoute: typeof ProAvailabilityRoute
+  ProBookingsRoute: typeof ProBookingsRoute
+  ProDashboardRoute: typeof ProDashboardRoute
+  ProProfileRoute: typeof ProProfileRoute
+  DailyBarkIndexRoute: typeof DailyBarkIndexRoute
+  DigitalCollarIndexRoute: typeof DigitalCollarIndexRoute
+  PackSocialIndexRoute: typeof PackSocialIndexRoute
+  ProPortalIndexRoute: typeof ProPortalIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -208,18 +442,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/daily-bark': {
-      id: '/daily-bark'
-      path: '/daily-bark'
-      fullPath: '/daily-bark'
-      preLoaderRoute: typeof DailyBarkRouteImport
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/digital-collar': {
-      id: '/digital-collar'
-      path: '/digital-collar'
-      fullPath: '/digital-collar'
-      preLoaderRoute: typeof DigitalCollarRouteImport
+    '/bookings': {
+      id: '/bookings'
+      path: '/bookings'
+      fullPath: '/bookings'
+      preLoaderRoute: typeof BookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/emergency': {
@@ -227,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/emergency'
       fullPath: '/emergency'
       preLoaderRoute: typeof EmergencyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/founder': {
@@ -250,11 +491,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/munchie-menu': {
       id: '/munchie-menu'
       path: '/munchie-menu'
       fullPath: '/munchie-menu'
       preLoaderRoute: typeof MunchieMenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/municipal-rules': {
+      id: '/municipal-rules'
+      path: '/municipal-rules'
+      fullPath: '/municipal-rules'
+      preLoaderRoute: typeof MunicipalRulesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/neighbourhood-watch': {
@@ -264,18 +519,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NeighbourhoodWatchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pack-social': {
-      id: '/pack-social'
-      path: '/pack-social'
-      fullPath: '/pack-social'
-      preLoaderRoute: typeof PackSocialRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pro-portal': {
-      id: '/pro-portal'
-      path: '/pro-portal'
-      fullPath: '/pro-portal'
-      preLoaderRoute: typeof ProPortalRouteImport
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pro-signup': {
@@ -285,6 +533,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProSignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reminders': {
+      id: '/reminders'
+      path: '/reminders'
+      fullPath: '/reminders'
+      preLoaderRoute: typeof RemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -292,23 +554,139 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/book/$proId': {
+      id: '/book/$proId'
+      path: '/book/$proId'
+      fullPath: '/book/$proId'
+      preLoaderRoute: typeof BookProIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daily-bark/': {
+      id: '/daily-bark/'
+      path: '/daily-bark'
+      fullPath: '/daily-bark/'
+      preLoaderRoute: typeof DailyBarkIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daily-bark/$postId': {
+      id: '/daily-bark/$postId'
+      path: '/daily-bark/$postId'
+      fullPath: '/daily-bark/$postId'
+      preLoaderRoute: typeof DailyBarkPostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/digital-collar/': {
+      id: '/digital-collar/'
+      path: '/digital-collar'
+      fullPath: '/digital-collar/'
+      preLoaderRoute: typeof DigitalCollarIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/digital-collar/$petId': {
+      id: '/digital-collar/$petId'
+      path: '/digital-collar/$petId'
+      fullPath: '/digital-collar/$petId'
+      preLoaderRoute: typeof DigitalCollarPetIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pack-social/': {
+      id: '/pack-social/'
+      path: '/pack-social'
+      fullPath: '/pack-social/'
+      preLoaderRoute: typeof PackSocialIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pack-social/$communityId': {
+      id: '/pack-social/$communityId'
+      path: '/pack-social/$communityId'
+      fullPath: '/pack-social/$communityId'
+      preLoaderRoute: typeof PackSocialCommunityIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pro-portal/': {
+      id: '/pro-portal/'
+      path: '/pro-portal'
+      fullPath: '/pro-portal/'
+      preLoaderRoute: typeof ProPortalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pro-portal/$proId': {
+      id: '/pro-portal/$proId'
+      path: '/pro-portal/$proId'
+      fullPath: '/pro-portal/$proId'
+      preLoaderRoute: typeof ProPortalProIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pro/application': {
+      id: '/pro/application'
+      path: '/pro/application'
+      fullPath: '/pro/application'
+      preLoaderRoute: typeof ProApplicationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pro/availability': {
+      id: '/pro/availability'
+      path: '/pro/availability'
+      fullPath: '/pro/availability'
+      preLoaderRoute: typeof ProAvailabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pro/bookings': {
+      id: '/pro/bookings'
+      path: '/pro/bookings'
+      fullPath: '/pro/bookings'
+      preLoaderRoute: typeof ProBookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pro/dashboard': {
+      id: '/pro/dashboard'
+      path: '/pro/dashboard'
+      fullPath: '/pro/dashboard'
+      preLoaderRoute: typeof ProDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pro/profile': {
+      id: '/pro/profile'
+      path: '/pro/profile'
+      fullPath: '/pro/profile'
+      preLoaderRoute: typeof ProProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DailyBarkRoute: DailyBarkRoute,
-  DigitalCollarRoute: DigitalCollarRoute,
+  AccountRoute: AccountRoute,
+  BookingsRoute: BookingsRoute,
   EmergencyRoute: EmergencyRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   FounderRoute: FounderRoute,
   FounderAccessRoute: FounderAccessRoute,
   LoginRoute: LoginRoute,
+  MessagesRoute: MessagesRoute,
   MunchieMenuRoute: MunchieMenuRoute,
+  MunicipalRulesRoute: MunicipalRulesRoute,
   NeighbourhoodWatchRoute: NeighbourhoodWatchRoute,
-  PackSocialRoute: PackSocialRoute,
-  ProPortalRoute: ProPortalRoute,
+  NotificationsRoute: NotificationsRoute,
   ProSignupRoute: ProSignupRoute,
+  RemindersRoute: RemindersRoute,
+  SignupRoute: SignupRoute,
   ApiChatRoute: ApiChatRoute,
+  BookProIdRoute: BookProIdRoute,
+  DailyBarkPostIdRoute: DailyBarkPostIdRoute,
+  DigitalCollarPetIdRoute: DigitalCollarPetIdRoute,
+  PackSocialCommunityIdRoute: PackSocialCommunityIdRoute,
+  ProPortalProIdRoute: ProPortalProIdRoute,
+  ProApplicationRoute: ProApplicationRoute,
+  ProAvailabilityRoute: ProAvailabilityRoute,
+  ProBookingsRoute: ProBookingsRoute,
+  ProDashboardRoute: ProDashboardRoute,
+  ProProfileRoute: ProProfileRoute,
+  DailyBarkIndexRoute: DailyBarkIndexRoute,
+  DigitalCollarIndexRoute: DigitalCollarIndexRoute,
+  PackSocialIndexRoute: PackSocialIndexRoute,
+  ProPortalIndexRoute: ProPortalIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
